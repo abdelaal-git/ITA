@@ -4,27 +4,48 @@
 
 .PHONY: lib build
 all: lib build
-
-QUESTA_SEPP ?= questa-2023.4
+MODELSIM_PATH = /mnt/d/Programs/ModelSim/modelsim_ase/win32aloem
+VLOG = $(MODELSIM_PATH)/vlog.exe
+VSIM = $(MODELSIM_PATH)/vsim.exe
+VLIB = $(MODELSIM_PATH)/vlib.exe
+VMAP = $(MODELSIM_PATH)/vmap.exe
 buildpath   ?= build
-VOPT        ?= $(QUESTA_SEPP) vopt
-VSIM        ?= $(QUESTA_SEPP) vsim
-VLIB        ?= $(QUESTA_SEPP) vlib
-VMAP        ?= $(QUESTA_SEPP) vmap
-VSIM_FLAGS  ?= -gui
+VSIM_FLAGS  ?= ""
 DEBUG       ?= ON
 
-lib:
+all: compile run wave
+# ============================
+# Ensure modelsim.ini exists
+# ============================
+modelsim_ini:
+	cp /mnt/d/Programs/ModelSim/modelsim_ase/modelsim.ini $(buildpath)/modelsim.ini
+
+lib: modelsim_ini
 	cd $(buildpath) && $(VLIB) work && $(VMAP) work work
 
-build:
-	cd $(buildpath) && $(VSIM) -c -do 'source compile.tcl; quit'
+# ============================
+# Compile only
+# ============================
+compile: lib
+	cd $(buildpath) && $(VSIM) -c -do "source compile.tcl; quit"
 
-sim_ita_tb: lib build
+# ============================
+# Run simulation (no GUI)
+# ============================
+run:
+	cd $(buildpath) && $(VSIM) $(VSIM_FLAGS) -c -do 'source ../sim_ita_tb.tcl'
+
+# ============================
+# Run simulation with GUI + waves
+# ============================
+wave:
+	cd $(buildpath) && $(VSIM) $(VSIM_FLAGS) -gui -do "set DEBUG ON; source ../sim_ita_tb.tcl"
+
+sim_ita_tb: lib compile
 	cd $(buildpath) && $(VSIM) $(VSIM_FLAGS) -do 'source ../sim_ita_tb.tcl'
 
-sim_ita_hwpe_tb: lib build
+sim_ita_hwpe_tb: lib compile
 	cd $(buildpath) && $(VSIM) $(VSIM_FLAGS) -do 'set DEBUG $(DEBUG); source ../sim_ita_hwpe_tb.tcl'
 
-sim_activation_tb: lib build
+sim_activation_tb: lib compile
 	cd $(buildpath) && $(VSIM) $(VSIM_FLAGS) -do 'source ../sim_activation_tb.tcl'

@@ -144,6 +144,7 @@ function automatic integer open_stim_file(string filename);
   integer stim_fd;
   if (filename == "")
     return 0;
+  $display ("simdir: %s, filename: %s", simdir, filename);
   stim_fd = $fopen({simdir,"/",filename}, "r");
   if (stim_fd == 0) begin
     $fatal(1, "[TB] ITA: Could not open %s stim file!", filename);
@@ -669,7 +670,7 @@ task automatic apply_ITA_weights(input integer phase);
     end
 
     #(50*CLK_PERIOD);
-    $finish();
+    $stop;
   end
 
 endmodule

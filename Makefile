@@ -17,14 +17,14 @@ SYNTH_PATH  = synopsys
 
 BENDER_TARGETS = -t rtl -t test
 
-target ?= sim_ita_tb
+target ?= run
 
 no_stalls ?= 0
 single_attention ?= 0
 s ?= 64
 e ?= 128
 p ?= 192
-f ?= 256
+f ?= 64
 bias ?= 0
 activation ?= identity
 ifeq ($(activation), gelu)
@@ -44,8 +44,8 @@ endif
 VLOG_FLAGS += -svinputport=compat
 VLOG_FLAGS += -timescale 1ns/1ps
 
-.PHONY: clean-sim sim-script sim synopsys-script
-all: testvector sim
+.PHONY: clean-sim compile run synopsys-script
+all: testvector compile run
 
 clean-sim:
 	rm -rf $(SIM_PATH)/work
@@ -55,11 +55,12 @@ clean-sim:
 	rm -rf $(SIM_PATH)/modelsim.ini
 	rm -rf $(SIM_PATH)/vsim.wlf
 
-sim-script: clean-sim
+compile: clean-sim
 	mkdir -p $(SIM_PATH)
 	$(BENDER_INSTALL_DIR)/bender script vsim $(BENDER_TARGETS) $(vlog_defs) --vlog-arg="$(VLOG_FLAGS)" >> $(SIM_PATH)/compile.tcl
-
-sim: sim-script
+	cd modelsim && \
+	$(MAKE) compile buildpath=$(ROOT_DIR)/$(SIM_PATH)
+run: 
 	cd modelsim && \
 	$(MAKE) $(target) buildpath=$(ROOT_DIR)/$(SIM_PATH)
 
@@ -103,3 +104,27 @@ check-bender:
 $(BENDER_INSTALL_DIR)/bender:
 	mkdir -p $(BENDER_INSTALL_DIR) && cd $(BENDER_INSTALL_DIR) && \
 	curl --proto '=https' --tlsv1.2 https://pulp-platform.github.io/bender/init -sSf | sh -s -- $(BENDER_VERSION)
+
+# ============================================================
+# Verilator Simulation (WSL1 / Linux)
+# ============================================================
+
+VERILATOR_BUILD = verilator_build
+VERILATOR_TOP   = $(target)
+
+verilate: clean-verilator
+	mkdir -p $(VERILATOR_BUILD)
+	# Generate Verilator filelist using Bender
+	$(BENDER_INSTALL_DIR)/bender script verilator $(BENDER_TARGETS) $(vlog_defs) > $(VERILATOR_BUILD)/files.f
+
+	# Build Verilator simulation
+	verilator -Wall -sv --cc --exe --build \
+		--top-module $(VERILATOR_TOP) \
+		-f $(VERILATOR_BUILD)/files.f \
+		$(VERILATOR_BUILD)/sim_main.cpp
+
+run-verilator:
+	./$(VERILATOR_BUILD)/obj_dir/V$(VERILATOR_TOP)
+
+clean-verilator:
+	rm -rf $(VERILATOR_BUILD)
