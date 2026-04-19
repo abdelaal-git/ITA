@@ -49,3 +49,6 @@ sim_ita_hwpe_tb: lib compile
 
 sim_activation_tb: lib compile
 	cd $(buildpath) && $(VSIM) $(VSIM_FLAGS) -do 'source ../sim_activation_tb.tcl'
+
+sim_uvm_tb: lib
+	cd $(buildpath) && $(VLOG) -sv +incdir+../../src/tb +incdir+../../src +define+UVM ../../src/tb/ita_uvm_pkg.sv ../../src/tb/ita_uvm_test.sv ../../src/ita.sv ../../src/ita_ctrl_regs.sv ../../src/ita_mem_master.sv ../../src/tb/axi_memory.sv -L uvm_pkg && $(VSIM) -c ita_uvm_tb -do "run -all; quit"

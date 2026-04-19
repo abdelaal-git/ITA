@@ -1,17 +1,13 @@
 // Copyright 2024 ITA project.
 // SPDX-License-Identifier: SHL-0.51
 
-`ifndef ITA_UVM_ENV_SV
-`define ITA_UVM_ENV_SV
+`ifndef ITA_UVM_TEST_SV
+`define ITA_UVM_TEST_SV
 
-class ita_env extends uvm_env;
-  `uvm_component_utils(ita_env)
+class ita_base_test extends uvm_test;
+  `uvm_component_utils(ita_base_test)
 
-  // Agents
-  axi_lite_agent axi_lite_master;
-  axi4_agent     axi4_master;
-
-  // Configuration
+  ita_env env;
   ita_config cfg;
 
   function new(string name, uvm_component parent);
@@ -21,28 +17,57 @@ class ita_env extends uvm_env;
   function void build_phase(uvm_phase phase);
     super.build_phase(phase);
 
-    // Get configuration
-    if (!uvm_config_db#(ita_config)::get(this, "", "cfg", cfg))
-      `uvm_error("ENV", "Configuration not found")
+    // Create configuration
+    cfg = ita_config::type_id::create("cfg");
 
-    // Create agents
-    axi_lite_master = axi_lite_agent::type_id::create("axi_lite_master", this);
-    axi_lite_master.is_active = UVM_ACTIVE;
+    // Set configuration in database
+    uvm_config_db#(ita_config)::set(this, "*", "cfg", cfg);
 
-    axi4_master = axi4_agent::type_id::create("axi4_master", this);
-    axi4_master.is_active = UVM_ACTIVE;
-
-    // Set virtual interfaces
-    uvm_config_db#(virtual axi_lite_if)::set(this, "axi_lite_master.*", "axi_lite_vif", cfg.axi_lite_vif);
-    uvm_config_db#(virtual axi4_if)::set(this, "axi4_master.*", "axi4_vif", cfg.axi4_vif);
+    // Create environment
+    env = ita_env::type_id::create("env", this);
   endfunction
 
-  function void connect_phase(uvm_phase phase);
-    super.connect_phase(phase);
-    // Connect analysis ports if needed for scoreboard
+  function void end_of_elaboration_phase(uvm_phase phase);
+    uvm_top.print_topology();
   endfunction
 
-endclass : ita_env
+  task run_phase(uvm_phase phase);
+    phase.raise_objection(this);
+    `uvm_info("TEST", "Starting ITA UVM test", UVM_MEDIUM)
+
+    // Wait for reset
+    #100ns;
+
+    // Run test sequence
+    run_test_sequence();
+
+    phase.drop_objection(this);
+  endtask
+
+  virtual task run_test_sequence();
+    // Base implementation - override in derived tests
+    `uvm_info("TEST", "Running base test sequence", UVM_MEDIUM)
+  endtask
+
+endclass : ita_base_test
+
+class ita_simple_test extends ita_base_test;
+  `uvm_component_utils(ita_simple_test)
+
+  function new(string name, uvm_component parent);
+    super.new(name, parent);
+  endfunction
+
+  task run_test_sequence();
+    ita_test_seq seq;
+
+    seq = ita_test_seq::type_id::create("seq");
+    seq.cfg = cfg;
+
+    seq.start(env.axi_lite_master.sequencer);
+  endtask
+
+endclass : ita_simple_test
 
 `endif</content>
 <parameter name="filePath">d:\MSc\Purdue\69500\Project\ITA\src\tb\ita_uvm_env.sv

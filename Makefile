@@ -44,6 +44,9 @@ endif
 VLOG_FLAGS += -svinputport=compat
 VLOG_FLAGS += -timescale 1ns/1ps
 
+# Environment variables for UVM
+export UVM_HOME ?= /path/to/uvm
+
 .PHONY: clean-sim compile run synopsys-script
 all: testvector compile run
 

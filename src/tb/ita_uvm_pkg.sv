@@ -12,12 +12,12 @@ package ita_uvm_pkg;
   import ita_package::*;
 
   // Include UVM files
-  `include "ita_uvm_types.sv"
   `include "ita_uvm_config.sv"
   `include "ita_uvm_sequences.sv"
   `include "ita_uvm_agents.sv"
   `include "ita_uvm_env.sv"
   `include "ita_uvm_test.sv"
+  `include "ita_coverage_assertions.sv"
 
 endpackage : ita_uvm_pkg
 
