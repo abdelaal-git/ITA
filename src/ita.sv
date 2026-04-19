@@ -11,25 +11,51 @@ module ita
 (
   input  logic         clk_i             ,
   input  logic         rst_ni            ,
-  // Network sizes
-  input  ctrl_t        ctrl_i            ,
-  // Handshake
-  input  logic         inp_valid_i       ,
-  output logic         inp_ready_o       ,
-  input  logic         inp_weight_valid_i,
-  output logic         inp_weight_ready_o,
-  input  logic         inp_bias_valid_i  ,
-  output logic         inp_bias_ready_o  ,
-  output logic         valid_o           ,
-  input  logic         ready_i           ,
-  output logic         busy_o            ,
-  // Input
-  input  inp_t         inp_i             ,
-  // Weights and biases
-  input  inp_weight_t  inp_weight_i      ,
-  input  bias_t        inp_bias_i        ,
-  // Output
-  output requant_oup_t oup_o
+  // AXI4-Lite slave interface for control registers
+  input  logic [31:0]  s_axil_awaddr     ,
+  input  logic         s_axil_awvalid    ,
+  output logic         s_axil_awready    ,
+  input  logic [31:0]  s_axil_wdata      ,
+  input  logic [3:0]   s_axil_wstrb      ,
+  input  logic         s_axil_wvalid     ,
+  output logic         s_axil_wready     ,
+  output logic [1:0]   s_axil_bresp      ,
+  output logic         s_axil_bvalid     ,
+  input  logic         s_axil_bready     ,
+  input  logic [31:0]  s_axil_araddr     ,
+  input  logic         s_axil_arvalid    ,
+  output logic         s_axil_arready    ,
+  output logic [31:0]  s_axil_rdata      ,
+  output logic [1:0]   s_axil_rresp      ,
+  output logic         s_axil_rvalid     ,
+  input  logic         s_axil_rready     ,
+  // AXI4 full master interface for external memory
+  output logic [31:0]  m_axi_awaddr      ,
+  output logic [7:0]   m_axi_awlen       ,
+  output logic [2:0]   m_axi_awsize      ,
+  output logic [1:0]   m_axi_awburst     ,
+  output logic         m_axi_awvalid     ,
+  input  logic         m_axi_awready     ,
+  output logic [31:0]  m_axi_wdata       ,
+  output logic [3:0]   m_axi_wstrb       ,
+  output logic         m_axi_wlast       ,
+  output logic         m_axi_wvalid      ,
+  input  logic         m_axi_wready      ,
+  input  logic [1:0]   m_axi_bresp       ,
+  input  logic         m_axi_bvalid      ,
+  output logic         m_axi_bready      ,
+
+  output logic [31:0]  m_axi_araddr      ,
+  output logic [7:0]   m_axi_arlen       ,
+  output logic [2:0]   m_axi_arsize      ,
+  output logic [1:0]   m_axi_arburst     ,
+  output logic         m_axi_arvalid     ,
+  input  logic         m_axi_arready     ,
+  input  logic [31:0]  m_axi_rdata       ,
+  input  logic [1:0]   m_axi_rresp       ,
+  input  logic         m_axi_rlast       ,
+  input  logic         m_axi_rvalid      ,
+  output logic         m_axi_rready      
 );
 
   step_e  step, step_q1, step_q2, step_q3, step_q4, step_q5, step_q6;
@@ -66,6 +92,105 @@ module ita
 
   // Activation signals
   activation_e activation_q1, activation_q2, activation_q3, activation_q4, activation_q5, activation_q6, activation_q7, activation_q8, activation_q9, activation_q10;
+
+  // Control registers
+  ctrl_t ctrl_reg;
+  logic [31:0] mem_input_base_addr;
+  logic [31:0] mem_weight_base_addr;
+  logic [31:0] mem_bias_base_addr;
+  logic [31:0] mem_output_base_addr;
+
+  logic         inp_valid_i;
+  logic         inp_ready_o;
+  logic         inp_weight_valid_i;
+  logic         inp_weight_ready_o;
+  logic         inp_bias_valid_i;
+  logic         inp_bias_ready_o;
+  logic         output_ready_o;
+
+  inp_t         inp_i;
+  inp_weight_t  inp_weight_i;
+  bias_t        inp_bias_i;
+  logic         valid_o;
+
+  ita_ctrl_regs i_ctrl_regs (
+    .clk_i             (clk_i               ),
+    .rst_ni            (rst_ni              ),
+    .s_axil_awaddr     (s_axil_awaddr       ),
+    .s_axil_awvalid    (s_axil_awvalid      ),
+    .s_axil_awready    (s_axil_awready      ),
+    .s_axil_wdata      (s_axil_wdata        ),
+    .s_axil_wstrb      (s_axil_wstrb        ),
+    .s_axil_wvalid     (s_axil_wvalid       ),
+    .s_axil_wready     (s_axil_wready       ),
+    .s_axil_bresp      (s_axil_bresp        ),
+    .s_axil_bvalid     (s_axil_bvalid       ),
+    .s_axil_bready     (s_axil_bready       ),
+    .s_axil_araddr     (s_axil_araddr       ),
+    .s_axil_arvalid    (s_axil_arvalid      ),
+    .s_axil_arready    (s_axil_arready      ),
+    .s_axil_rdata      (s_axil_rdata        ),
+    .s_axil_rresp      (s_axil_rresp        ),
+    .s_axil_rvalid     (s_axil_rvalid       ),
+    .s_axil_rready     (s_axil_rready       ),
+    .ctrl_reg_o        (ctrl_reg            ),
+    .mem_input_base_addr_o (mem_input_base_addr),
+    .mem_weight_base_addr_o(mem_weight_base_addr),
+    .mem_bias_base_addr_o  (mem_bias_base_addr),
+    .mem_output_base_addr_o(mem_output_base_addr)
+  );
+
+  ita_mem_master i_mem_master (
+    .clk_i                   (clk_i                   ),
+    .rst_ni                  (rst_ni                  ),
+    .mem_input_base_addr_i   (mem_input_base_addr    ),
+    .mem_weight_base_addr_i  (mem_weight_base_addr   ),
+    .mem_bias_base_addr_i    (mem_bias_base_addr     ),
+    .mem_output_base_addr_i  (mem_output_base_addr   ),
+
+    .m_axi_awaddr            (m_axi_awaddr           ),
+    .m_axi_awlen             (m_axi_awlen            ),
+    .m_axi_awsize            (m_axi_awsize           ),
+    .m_axi_awburst           (m_axi_awburst          ),
+    .m_axi_awvalid           (m_axi_awvalid          ),
+    .m_axi_awready           (m_axi_awready          ),
+    .m_axi_wdata             (m_axi_wdata            ),
+    .m_axi_wstrb             (m_axi_wstrb            ),
+    .m_axi_wlast             (m_axi_wlast            ),
+    .m_axi_wvalid            (m_axi_wvalid           ),
+    .m_axi_wready            (m_axi_wready           ),
+    .m_axi_bresp             (m_axi_bresp            ),
+    .m_axi_bvalid            (m_axi_bvalid           ),
+    .m_axi_bready            (m_axi_bready           ),
+
+    .m_axi_araddr            (m_axi_araddr           ),
+    .m_axi_arlen             (m_axi_arlen            ),
+    .m_axi_arsize            (m_axi_arsize           ),
+    .m_axi_arburst           (m_axi_arburst          ),
+    .m_axi_arvalid           (m_axi_arvalid          ),
+    .m_axi_arready           (m_axi_arready          ),
+    .m_axi_rdata             (m_axi_rdata            ),
+    .m_axi_rresp             (m_axi_rresp            ),
+    .m_axi_rlast             (m_axi_rlast            ),
+    .m_axi_rvalid            (m_axi_rvalid           ),
+    .m_axi_rready            (m_axi_rready           ),
+
+    .inp_valid_o             (inp_valid_i            ),
+    .inp_ready_i             (inp_ready_o            ),
+    .inp_o                   (inp_i                  ),
+
+    .inp_weight_valid_o      (inp_weight_valid_i     ),
+    .inp_weight_ready_i      (inp_weight_ready_o     ),
+    .inp_weight_o            (inp_weight_i           ),
+
+    .inp_bias_valid_o        (inp_bias_valid_i       ),
+    .inp_bias_ready_i        (inp_bias_ready_o       ),
+    .inp_bias_o              (inp_bias_i             ),
+
+    .output_valid_i          (valid_o                ),
+    .output_ready_o          (output_ready_o         ),
+    .output_data_i           (data_from_fifo         )
+  );
 
   always_ff @(posedge clk_i, negedge rst_ni) begin
     if (!rst_ni) begin
@@ -145,7 +270,7 @@ module ita
       activation_q4         <= activation_q3;
       activation_q3         <= activation_q2;
       activation_q2         <= activation_q1;
-      activation_q1         <= ctrl_i.activation;
+      activation_q1         <= ctrl_reg.activation;
     end
   end
 
@@ -169,12 +294,10 @@ module ita
     end
   end
 
-  assign oup_o = valid_o ? data_from_fifo : '0;
-
   ita_controller i_controller (
     .clk_i                (clk_i              ),
     .rst_ni               (rst_ni             ),
-    .ctrl_i               (ctrl_i             ),
+    .ctrl_i               (ctrl_reg           ),
     .inp_valid_i          (inp_valid_i        ),
     .inp_ready_o          (inp_ready_o        ),
     .weight_valid_i       (weight_valid       ),
@@ -182,7 +305,7 @@ module ita
     .bias_valid_i         (inp_bias_valid_i   ),
     .bias_ready_o         (inp_bias_ready_o   ),
     .oup_valid_i          (valid_o            ),
-    .oup_ready_i          (ready_i            ),
+    .oup_ready_i          (output_ready_o     ),
     .step_o               (step               ),
     .soft_addr_div_i      (soft_addr_div      ),
     .softmax_done_i       (softmax_done       ),
@@ -246,7 +369,7 @@ module ita
   ita_softmax_top i_softmax_top (
     .clk_i                (clk_i                           ),
     .rst_ni               (rst_ni                          ),
-    .ctrl_i               (ctrl_i                          ),
+    .ctrl_i               (ctrl_reg                        ),
     .requant_oup_i        (requant_oup                     ),
     .step_i               (step_q6                         ),
     .calc_en_i            (calc_en_q6 && last_inner_tile_q6),
@@ -260,7 +383,7 @@ module ita
 
 
   ita_requatization_controller i_requantization_controller (
-    .ctrl_i             (ctrl_i            ),
+    .ctrl_i             (ctrl_reg          ),
     .requantizer_step_i (step_q4         ),
     .requant_mult_o     (requant_mult     ),
     .requant_shift_o    (requant_shift    ),
@@ -294,8 +417,8 @@ module ita
     .activation_q2_i (activation_q9),
     .calc_en_i       (calc_en_q6 && last_inner_tile_q6),
     .calc_en_q_i     (calc_en_q7 && last_inner_tile_q7),
-    .b_i             (ctrl_i.gelu_b),
-    .c_i             (ctrl_i.gelu_c),
+    .b_i             (ctrl_reg.gelu_b),
+    .c_i             (ctrl_reg.gelu_c),
     .requant_mode_i  (activation_requant_mode),
     .requant_mult_i  (activation_requant_mult),
     .requant_shift_i (activation_requant_shift),
@@ -323,7 +446,7 @@ module ita
     .pop_from_fifo_o   (pop_from_fifo   ),
     .data_from_fifo_i  (data_from_fifo  ),
 
-    .ready_i           (ready_i         ),
+    .ready_i           (output_ready_o  ),
     .valid_o           (valid_o         )
   );
 

@@ -50,17 +50,43 @@ module ita_tb;
   // Signals
   logic         clk, rst_n;
   ctrl_t        ita_ctrl        ;
-  logic         inp_valid, inp_ready;
-  logic         inp_weight_valid, inp_weight_ready;
-  inp_t         inp             ;
-  inp_weight_t  inp_weight      ;
-  bias_t        inp_bias        ;
-  requant_oup_t requant_oup     ;
   requant_oup_t exp_res;
-  logic         oup_valid, oup_ready;
   requant_const_array_t stim_eps_mult;
   requant_const_array_t stim_right_shift;
   requant_array_t       stim_add;
+
+  // AXI signals for memory master
+  logic [31:0] m_axi_awaddr ;
+  logic [7:0]  m_axi_awlen  ;
+  logic [2:0]  m_axi_awsize ;
+  logic [1:0]  m_axi_awburst;
+  logic        m_axi_awvalid;
+  logic        m_axi_awready;
+  logic [31:0] m_axi_wdata  ;
+  logic [3:0]  m_axi_wstrb  ;
+  logic        m_axi_wlast  ;
+  logic        m_axi_wvalid ;
+  logic        m_axi_wready ;
+  logic [1:0]  m_axi_bresp  ;
+  logic        m_axi_bvalid ;
+  logic        m_axi_bready ;
+  logic [31:0] m_axi_araddr ;
+  logic [7:0]  m_axi_arlen  ;
+  logic [2:0]  m_axi_arsize ;
+  logic [1:0]  m_axi_arburst;
+  logic        m_axi_arvalid;
+  logic        m_axi_arready;
+  logic [31:0] m_axi_rdata  ;
+  logic [1:0]  m_axi_rresp  ;
+  logic        m_axi_rlast  ;
+  logic        m_axi_rvalid ;
+  logic        m_axi_rready ;
+
+  // Memory base addresses
+  localparam logic [31:0] INPUT_BASE_ADDR  = 32'h00000000;
+  localparam logic [31:0] WEIGHT_BASE_ADDR = 32'h00100000;
+  localparam logic [31:0] BIAS_BASE_ADDR   = 32'h00200000;
+  localparam logic [31:0] OUTPUT_BASE_ADDR = 32'h00300000;
 
   // Variables
   string simdir;
@@ -124,21 +150,94 @@ module ita_tb;
   ita dut (
     .clk_i             (clk             ),
     .rst_ni            (rst_n           ),
-    .ctrl_i            (ita_ctrl        ),
-    .inp_valid_i       (inp_valid       ),
-    .inp_ready_o       (inp_ready       ),
-    .inp_weight_valid_i(inp_weight_valid),
-    .inp_weight_ready_o(inp_weight_ready),
-    .inp_bias_valid_i  (inp_valid       ),
-    .inp_bias_ready_o  (                ),
-    .inp_i             (inp             ),
-    .inp_weight_i      (inp_weight      ),
-    .inp_bias_i        (inp_bias        ),
-    .oup_o             (requant_oup     ),
-    .valid_o           (oup_valid       ),
-    .ready_i           (oup_ready       ),
-    .busy_o            (                )
+    .s_axil_awaddr     (s_axil_awaddr   ),
+    .s_axil_awvalid    (s_axil_awvalid  ),
+    .s_axil_awready    (s_axil_awready  ),
+    .s_axil_wdata      (s_axil_wdata    ),
+    .s_axil_wstrb      (s_axil_wstrb    ),
+    .s_axil_wvalid     (s_axil_wvalid   ),
+    .s_axil_wready     (s_axil_wready   ),
+    .s_axil_bresp      (s_axil_bresp    ),
+    .s_axil_bvalid     (s_axil_bvalid   ),
+    .s_axil_bready     (s_axil_bready   ),
+    .s_axil_araddr     (s_axil_araddr   ),
+    .s_axil_arvalid    (s_axil_arvalid  ),
+    .s_axil_arready    (s_axil_arready  ),
+    .s_axil_rdata      (s_axil_rdata    ),
+    .s_axil_rresp      (s_axil_rresp    ),
+    .s_axil_rvalid     (s_axil_rvalid   ),
+    .s_axil_rready     (s_axil_rready   ),
+    .m_axi_awaddr      (m_axi_awaddr    ),
+    .m_axi_awlen       (m_axi_awlen     ),
+    .m_axi_awsize      (m_axi_awsize    ),
+    .m_axi_awburst     (m_axi_awburst   ),
+    .m_axi_awvalid     (m_axi_awvalid   ),
+    .m_axi_awready     (m_axi_awready   ),
+    .m_axi_wdata       (m_axi_wdata     ),
+    .m_axi_wstrb       (m_axi_wstrb     ),
+    .m_axi_wlast       (m_axi_wlast     ),
+    .m_axi_wvalid      (m_axi_wvalid    ),
+    .m_axi_wready      (m_axi_wready    ),
+    .m_axi_bresp       (m_axi_bresp     ),
+    .m_axi_bvalid      (m_axi_bvalid    ),
+    .m_axi_bready      (m_axi_bready    ),
+    .m_axi_araddr      (m_axi_araddr    ),
+    .m_axi_arlen       (m_axi_arlen     ),
+    .m_axi_arsize      (m_axi_arsize    ),
+    .m_axi_arburst     (m_axi_arburst   ),
+    .m_axi_arvalid     (m_axi_arvalid   ),
+    .m_axi_arready     (m_axi_arready   ),
+    .m_axi_rdata       (m_axi_rdata     ),
+    .m_axi_rresp       (m_axi_rresp     ),
+    .m_axi_rlast       (m_axi_rlast     ),
+    .m_axi_rvalid      (m_axi_rvalid    ),
+    .m_axi_rready      (m_axi_rready    )
   );
+
+  axi_memory #(
+    .MEM_SIZE (4*1024*1024), // 4MB
+    .BASE_ADDR(0)
+  ) i_memory (
+    .clk_i         (clk         ),
+    .rst_ni        (rst_n       ),
+    .s_axi_awaddr  (m_axi_awaddr),
+    .s_axi_awlen   (m_axi_awlen ),
+    .s_axi_awsize  (m_axi_awsize),
+    .s_axi_awburst (m_axi_awburst),
+    .s_axi_awvalid (m_axi_awvalid),
+    .s_axi_awready (m_axi_awready),
+    .s_axi_wdata   (m_axi_wdata ),
+    .s_axi_wstrb   (m_axi_wstrb ),
+    .s_axi_wlast   (m_axi_wlast ),
+    .s_axi_wvalid  (m_axi_wvalid),
+    .s_axi_wready  (m_axi_wready),
+    .s_axi_bresp   (m_axi_bresp ),
+    .s_axi_bvalid  (m_axi_bvalid),
+    .s_axi_bready  (m_axi_bready),
+    .s_axi_araddr  (m_axi_araddr),
+    .s_axi_arlen   (m_axi_arlen ),
+    .s_axi_arsize  (m_axi_arsize),
+    .s_axi_arburst (m_axi_arburst),
+    .s_axi_arvalid (m_axi_arvalid),
+    .s_axi_arready (m_axi_arready),
+    .s_axi_rdata   (m_axi_rdata ),
+    .s_axi_rresp   (m_axi_rresp ),
+    .s_axi_rlast   (m_axi_rlast ),
+    .s_axi_rvalid  (m_axi_rvalid),
+    .s_axi_rready  (m_axi_rready)
+  );
+
+  // Task to write memory base addresses to control registers
+  task write_mem_bases();
+    // Write input base address (register 12)
+    axi_write(32'h30, INPUT_BASE_ADDR);
+    // Write weight base address (register 13)
+    axi_write(32'h34, WEIGHT_BASE_ADDR);
+    // Write bias base address (register 14)
+    axi_write(32'h38, BIAS_BASE_ADDR);
+    // Write output base address (register 15)
+    axi_write(32'h3C, OUTPUT_BASE_ADDR);
+  endtask
 
 function automatic integer open_stim_file(string filename);
   integer stim_fd;
@@ -297,24 +396,68 @@ task automatic trigger_ITA ();
       @(posedge clk);
       #(APPL_DELAY);
       ita_ctrl.start = 1'b1;
+      write_ctrl(ita_ctrl);
 
       @(posedge clk);
       #(APPL_DELAY);
       ita_ctrl.start = 1'b0;
+      write_ctrl(ita_ctrl);
+endtask
+
+task axi_write(input [31:0] addr, input [31:0] data);
+  // write address
+  s_axil_awaddr = addr;
+  s_axil_awvalid = 1'b1;
+  @(posedge clk);
+  while (!s_axil_awready) @(posedge clk);
+  s_axil_awvalid = 1'b0;
+  // write data
+  s_axil_wdata = data;
+  s_axil_wstrb = 4'b1111;
+  s_axil_wvalid = 1'b1;
+  @(posedge clk);
+  while (!s_axil_wready) @(posedge clk);
+  s_axil_wvalid = 1'b0;
+  // wait for response
+  s_axil_bready = 1'b1;
+  @(posedge clk);
+  while (!s_axil_bvalid) @(posedge clk);
+  s_axil_bready = 1'b0;
+endtask
+
+task axi_read(input [31:0] addr, output [31:0] data);
+  // read address
+  s_axil_araddr = addr;
+  s_axil_arvalid = 1'b1;
+  @(posedge clk);
+  while (!s_axil_arready) @(posedge clk);
+  s_axil_arvalid = 1'b0;
+  // read data
+  s_axil_rready = 1'b1;
+  @(posedge clk);
+  while (!s_axil_rvalid) @(posedge clk);
+  data = s_axil_rdata;
+  s_axil_rready = 1'b0;
+endtask
+
+task write_ctrl(input ctrl_t ctrl);
+  logic [383:0] flat = ctrl;
+  for (int i = 0; i < 12; i++) begin
+    axi_write(32'h00000000 + i*4, flat[31:0]);
+    flat = flat >> 32;
+  end
 endtask
 
 task automatic apply_ITA_inputs(input integer phase);
       integer stim_fd_inp_attn[2];
       bit input_file_index = 0;
-      // Initialize the valid and ready signals to 1 to read the first value
-      logic inp_valid_q = 1'b1;
-      logic inp_ready_q = 1'b1;
       bit is_end_of_input;
       integer tile;
       integer tile_entry;
       integer group;
       integer stim_fd_inp;
       integer stim_fd_bias;
+      integer addr_offset = 0; // Address offset in bytes
 
       $display("[TB] ITA: Applying  inputs in phase %0d at %t.", phase, $time);
 
@@ -330,29 +473,24 @@ task automatic apply_ITA_inputs(input integer phase);
       while (!is_end_of_input) begin
         @(posedge clk);
         #(APPL_DELAY);
-        if (successful_handshake(inp_valid_q, inp_ready_q)) begin
-          read_input(stim_fd_inp);
-          read_bias(stim_fd_bias, phase, tile);
+        read_input(stim_fd_inp);
+        read_bias(stim_fd_bias, phase, tile);
+        // Write input and bias to memory
+        axi_write(INPUT_BASE_ADDR + addr_offset, inp);
+        axi_write(BIAS_BASE_ADDR + addr_offset, inp_bias);
+        addr_offset += 4; // Next word
+        tile_entry += 1;
+        if (should_toggle_input(tile_entry, group) && phase == 3) begin
+          $display("[TB] ITA: Input Switch:  tile_entry: %0d, group: %0d at %t.", tile_entry, group, $time);
+          toggle_input(tile_entry, group, input_file_index);
         end
-        inp_valid = get_random();
-        #(ACQ_DELAY-APPL_DELAY);
-        inp_valid_q = inp_valid;
-        inp_ready_q = inp_ready;
-        if(successful_handshake(inp_valid, inp_ready)) begin
-          tile_entry += 1;
-          if (should_toggle_input(tile_entry, group) && phase == 3) begin
-            $display("[TB] ITA: Input Switch:  tile_entry: %0d, group: %0d at %t.", tile_entry, group, $time);
-            toggle_input(tile_entry, group, input_file_index);
-          end
-          if (is_end_of_tile(tile_entry) && phase != 3)
-            reset_tile(tile, tile_entry);
-          stim_fd_inp = stim_fd_inp_attn[input_file_index];
-          is_end_of_input = $feof(stim_fd_inp) != 0;
-        end
+        if (is_end_of_tile(tile_entry) && phase != 3)
+          reset_tile(tile, tile_entry);
+        stim_fd_inp = stim_fd_inp_attn[input_file_index];
+        is_end_of_input = $feof(stim_fd_inp) != 0;
       end
       @(posedge clk);
       #(APPL_DELAY);
-      inp_valid = 1'b0; // Set back to default
       $fclose(stim_fd_inp);
       $fclose(stim_fd_bias);
 endtask
@@ -360,14 +498,12 @@ endtask
 task automatic apply_ITA_weights(input integer phase);
     integer stim_fd_weight_attn[2];
     bit input_file_index = 0;
-    // Initialize the valid and ready signals to 1 to read the first value
-    logic inp_weight_valid_q = 1'b1;
-    logic inp_weight_ready_q = 1'b1;
     integer is_end_of_input;
     integer tile;
     integer tile_entry;
     integer group;
     integer stim_fd_weight;
+    integer addr_offset = 0; // Address offset in bytes
 
     $display("[TB] ITA: Applying weights in phase %0d at %t.", phase, $time);
 
@@ -379,26 +515,20 @@ task automatic apply_ITA_weights(input integer phase);
     stim_fd_weight_attn[1] = open_stim_file(ATTENTION_WEIGHT_FILES[0]);
     is_end_of_input = 0;
 
-
     while (!is_end_of_input) begin
       @(posedge clk);
       #(APPL_DELAY);
-      if (successful_handshake(inp_weight_valid_q, inp_weight_ready_q)) begin
-        read_weight(stim_fd_weight);
+      read_weight(stim_fd_weight);
+      // Write weight to memory
+      axi_write(WEIGHT_BASE_ADDR + addr_offset, inp_weight);
+      addr_offset += 4; // Next word
+      tile_entry += 1;
+      if (should_toggle_input(tile_entry, group) && phase == 3) begin
+        $display("[TB] ITA: Weight Switch: tile_entry: %0d, group: %0d at %t.", tile_entry, group, $time);
+        toggle_input(tile_entry, group, input_file_index);
       end
-      inp_weight_valid = get_random();
-      #(ACQ_DELAY-APPL_DELAY);
-      inp_weight_valid_q = inp_weight_valid;
-      inp_weight_ready_q = inp_weight_ready;
-      if (successful_handshake(inp_weight_valid, inp_weight_ready)) begin
-        tile_entry += 1;
-        if (should_toggle_input(tile_entry, group) && phase == 3) begin
-          $display("[TB] ITA: Weight Switch: tile_entry: %0d, group: %0d at %t.", tile_entry, group, $time);
-          toggle_input(tile_entry, group, input_file_index);
-        end
-        stim_fd_weight = stim_fd_weight_attn[input_file_index];
-        is_end_of_input = $feof(stim_fd_weight);
-      end
+      stim_fd_weight = stim_fd_weight_attn[input_file_index];
+      is_end_of_input = $feof(stim_fd_weight);
     end
     $fclose(stim_fd_weight);
   endtask
@@ -435,13 +565,12 @@ task automatic apply_ITA_weights(input integer phase);
   task automatic check_ITA_outputs(input integer phase);
     integer exp_resp_fd_attn[2];
     bit input_file_index = 0;
-    // Initialize the valid and ready signals to 1 to read the first value
-    logic oup_valid_q = 1'b1;
-    logic oup_ready_q = 1'b1;
     integer is_end_of_input;
     integer tile_entry;
     integer group;
     integer exp_resp_fd;
+    integer addr_offset = 0; // Address offset in bytes
+    logic [31:0] mem_output;
 
     $display("[TB] ITA: Checking outputs in phase %0d at %t.", phase, $time);
 
@@ -456,25 +585,21 @@ task automatic apply_ITA_weights(input integer phase);
     while (!is_end_of_input) begin
       @(posedge clk);
       #(APPL_DELAY);
-      if (successful_handshake(oup_valid_q, oup_ready_q))
-        read_exp_resp(exp_resp_fd);
-      oup_ready = get_random();
-      #(ACQ_DELAY-APPL_DELAY);
-      oup_valid_q = oup_valid;
-      oup_ready_q = oup_ready;
-      if (successful_handshake(oup_valid, oup_ready)) begin
-        tile_entry += 1;
-        if (requant_oup !== exp_res) begin
-          $display("[TB] ITA: Wrong value received %x, instead of %x at %t. (phase:  %0d)", requant_oup, exp_res, $time, phase);
+      read_exp_resp(exp_resp_fd);
+      // Read output from memory
+      axi_read(OUTPUT_BASE_ADDR + addr_offset, mem_output);
+      addr_offset += 4; // Next word
+      if (mem_output !== exp_res) begin
+        $display("[TB] ITA: Wrong value received %x, instead of %x at %t. (phase:  %0d)", mem_output, exp_res, $time, phase);
+      end
+      tile_entry += 1;
+      if (!is_last_group(group) && phase == 3 && should_toggle_output(input_file_index, tile_entry)) begin
+          $display("[TB] ITA: %0d outputs were checked in phase %0d.",tile_entry, phase);
+          $display("[TB] ITA: Output Switch: tile_entry: %0d, group: %0d at %t.", tile_entry, group, $time);
+          toggle_input(tile_entry, group, input_file_index);
         end
-        if (!is_last_group(group) && phase == 3 && should_toggle_output(input_file_index, tile_entry)) begin
-            $display("[TB] ITA: %0d outputs were checked in phase %0d.",tile_entry, phase);
-            $display("[TB] ITA: Output Switch: tile_entry: %0d, group: %0d at %t.", tile_entry, group, $time);
-            toggle_input(tile_entry, group, input_file_index);
-          end
       exp_resp_fd = exp_resp_fd_attn[input_file_index];
       is_end_of_input = $feof(exp_resp_fd);
-      end
     end
     $fclose(exp_resp_fd);
     $display("[TB] ITA: %0d outputs were checked in phase %0d.",tile_entry, phase);
@@ -493,11 +618,9 @@ task automatic apply_ITA_weights(input integer phase);
 
     read_activation_constants(ita_ctrl.gelu_b, ita_ctrl.gelu_c, ita_ctrl.activation_requant_mult, ita_ctrl.activation_requant_shift, ita_ctrl.activation_requant_add);
 
-    inp_valid = 1'b0;
-    inp = '0;
-    inp_weight = '0;
-    inp_bias = '0;
-    oup_ready = 1'b0;
+    write_ctrl(ita_ctrl);
+    write_mem_bases();
+
     wait (rst_n);
 
     for (int i = 0; i < ITERS; i++) begin
@@ -624,9 +747,6 @@ task automatic apply_ITA_weights(input integer phase);
   end
 
   initial begin: weight_application_block
-    inp_weight = '0;
-    inp_weight_valid = 1'b0;
-
     wait (rst_n);
 
     for (int i = 0; i < ITERS; i++) begin
@@ -643,8 +763,6 @@ task automatic apply_ITA_weights(input integer phase);
 
       @(posedge clk);
       #(APPL_DELAY);
-      inp_weight = '0;
-      inp_weight_valid = 1'b0;
     end
   end
 
