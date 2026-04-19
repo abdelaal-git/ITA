@@ -52,11 +52,11 @@ vlog -sv src/tb/axi_memory.sv
 vlog -sv src/tb/ita_uvm_tb_top.sv
 
 # Compile top-level testbench
-vlog -sv src/tb/ita_uvm_tb.sv
+vlog -sv src/tb/ita_uvm_tb_module.sv
 
 # Run simulation
 # Default test: ita_simple_test
 # Other tests: ita_config_test, ita_memory_test
-vsim -c ita_uvm_tb +UVM_TESTNAME=ita_simple_test -do "run -all; quit -f"
+vsim -c ita_uvm_tb -do "run -all; quit"
 
 echo "UVM testbench simulation completed."
