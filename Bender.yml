@@ -13,15 +13,6 @@ package:
     - Gamze Islamoglu <gislamoglu@iis.ee.ethz.ch>
     - Philip Wiese <wiesep@iis.ee.ethz.ch>
 
-# VCS Simulation Targets
-targets:
-  vcs:
-    - rtl
-    - test
-  vcs_ita_hwpe:
-    - ita_hwpe
-    - ita_hwpe_test
-
 # Other packages this package depends on. Optional.
 dependencies:
   common_cells:       { git: https://github.com/pulp-platform/common_cells, version: 1.23.0 }
