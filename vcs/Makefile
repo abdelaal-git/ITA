@@ -5,12 +5,14 @@
 .PHONY: all compile run wave clean
 all: compile run
 
+BENDER =$(BENDER_INSTALL_DIR)
+
 # VCS Settings
-VCS_HOME       := /package/eda2/synopsys/vcs/X-2025.06-SP2-2/linux64
+VCS_HOME       := /package/eda2/synopsys/vcs/X-2025.06-SP2-2
 VERDI_HOME     := /package/eda2/synopsys/verdi/X-2025.06-SP2-2
-VCS            := $(VCS_HOME)/bin/vcs
+VCS            := $(VCS_HOME)/linux64/bin/vcs
 VERDI          := $(VERDI_HOME)/bin/verdi
-VCS_SV_FLAGS   = -sverilog -timescale=1ns/1ps -vpi
+VCS_SV_FLAGS   = -sverilog -timescale=1ns/1ps -debug_access+all -full64 -ntb_opts uvm
 VCS_COMPILE_LOG = vcs_compile.log
 
 buildpath   ?= build
@@ -21,13 +23,9 @@ VCS_DEFINES ?=
 # ============================
 compile:
 	@echo "=== Compiling with VCS ==="
-	@if [ ! -f $(buildpath)/compile.tcl ]; then \
-		echo "Error: compile.tcl not found. Run 'make compile' from root Makefile first."; \
-		exit 1; \
-	fi
-	cd $(buildpath) && $(VCS) $(VCS_SV_FLAGS) -o simv \
-		-f ../compile.tcl \
-		2>&1 | tee $(VCS_COMPILE_LOG)
+	sed -i -e 's/-svinputport=compat//g' -e '/tb_fifo.sv/d' $(buildpath)/compile.tcl
+	cd $(buildpath) && source $(buildpath)/compile.tcl \
+	2>&1 | tee $(VCS_COMPILE_LOG)
 	@echo "=== VCS Compilation complete ==="
 
 # ============================
@@ -49,12 +47,12 @@ wave:
 # ============================
 compile_hwpe:
 	@echo "=== Compiling HWPE testbench with VCS ==="
-	@if [ ! -f $(buildpath)/compile.tcl ]; then \
+	@if [ !-c -do "source compile.tcl; quit" ]; then \
 		echo "Error: compile.tcl not found. Run 'make compile' from root Makefile first."; \
 		exit 1; \
 	fi
 	cd $(buildpath) && $(VCS) $(VCS_SV_FLAGS) -o simv \
-		-f ../compile.tcl \
+		-c -do "source compile.tcl; quit" \
 		2>&1 | tee $(VCS_COMPILE_LOG)
 	@echo "=== VCS HWPE Compilation complete ==="
 
@@ -71,11 +69,11 @@ wave_hwpe:
 # ============================
 verdi:
 	@echo "=== Opening Verdi waveform viewer ==="
-	$(VERDI) -f ../compile.tcl -ssv -top ita_tb &
+	$(VERDI)-c -do "source compile.tcl; quit" -ssv -top ita_tb &
 
 verdi_hwpe:
 	@echo "=== Opening Verdi waveform viewer for HWPE ==="
-	$(VERDI) -f ../compile.tcl -ssv -top ita_hwpe_tb &
+	$(VERDI)-c -do "source compile.tcl; quit" -ssv -top ita_hwpe_tb &
 
 # ============================
 # Clean build artifacts
