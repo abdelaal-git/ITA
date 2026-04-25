@@ -23,10 +23,8 @@ BENDER_TARGETS = -t rtl -t test
 target ?= run
 
 # VCS Settings
-unexport VCS_HOME
-VCS_HOME       ?= /package/eda2/synopsys/vcs/X-2025.06-SP2-2/linux64
-unexport VERDI_HOME
-VERDI_HOME     ?= /package/eda2/synopsys/verdi/X-2025.06-SP2-2
+VCS_HOME       := /package/eda2/synopsys/vcs/X-2025.06-SP2-2/linux64
+VERDI_HOME     := /package/eda2/synopsys/verdi/X-2025.06-SP2-2
 VCS_INC_DIR    ?= +incdir+src/tb+src
 VCS_DEFINES    ?= $(vlog_defs)
 VCS_SV_FLAGS   ?= -sverilog -timescale=1ns/1ps -vpi

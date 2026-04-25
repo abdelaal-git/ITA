@@ -6,12 +6,10 @@
 all: compile run
 
 # VCS Settings
-unexport VCS_HOME
-VCS_HOME       ?= /package/eda2/synopsys/vcs/X-2025.06-SP2-2/linux64
-unexport VERDI_HOME
-VERDI_HOME     ?= /package/eda2/synopsys/verdi/X-2025.06-SP2-2
-VCS            = $(VCS_HOME)/bin/vcs
-VERDI          = $(VERDI_HOME)/bin/verdi
+VCS_HOME       := /package/eda2/synopsys/vcs/X-2025.06-SP2-2/linux64
+VERDI_HOME     := /package/eda2/synopsys/verdi/X-2025.06-SP2-2
+VCS            := $(VCS_HOME)/bin/vcs
+VERDI          := $(VERDI_HOME)/bin/verdi
 VCS_SV_FLAGS   = -sverilog -timescale=1ns/1ps -vpi
 VCS_COMPILE_LOG = vcs_compile.log
 
