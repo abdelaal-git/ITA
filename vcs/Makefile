@@ -6,7 +6,7 @@
 all: compile run
 
 # VCS Settings
-VCS_HOME       ?= /package/eda2/synopsys/vcs/X-2025.06-SP2-2
+VCS_HOME       ?= /package/eda2/synopsys/vcs/X-2025.06-SP2-2/linux64
 VERDI_HOME     ?= /package/eda2/synopsys/verdi/X-2025.06-SP2-2
 VCS            = $(VCS_HOME)/bin/vcs
 VERDI          = $(VERDI_HOME)/bin/verdi
