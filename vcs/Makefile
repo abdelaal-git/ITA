@@ -27,7 +27,7 @@ compile:
 	fi
 	cd $(buildpath) && $(VCS) $(VCS_SV_FLAGS) -o simv \
 		-f ../compile.tcl \
-		> $(VCS_COMPILE_LOG) 2>&1
+		2>&1 | tee $(VCS_COMPILE_LOG)
 	@echo "=== VCS Compilation complete ==="
 
 # ============================
@@ -55,7 +55,7 @@ compile_hwpe:
 	fi
 	cd $(buildpath) && $(VCS) $(VCS_SV_FLAGS) -o simv \
 		-f ../compile.tcl \
-		> $(VCS_COMPILE_LOG) 2>&1
+		2>&1 | tee $(VCS_COMPILE_LOG)
 	@echo "=== VCS HWPE Compilation complete ==="
 
 run_hwpe:
