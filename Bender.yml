@@ -81,7 +81,7 @@ sources:
       - src/tb/uvm_tb/axi_memory.sv
     include_dirs:
             - /package/eda2/synopsys/vcs/X-2025.06-SP2-2/etc/uvm/src/src
-
+            - /package/eda2/synopsys/vcs/X-2025.06-SP2-2/etc/uvm/src/dpi
             - src/tb/uvm_tb
 
   # HWPE TB sources

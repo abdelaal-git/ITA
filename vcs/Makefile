@@ -13,7 +13,7 @@ UVM_HOME       := $(VCS_HOME)/etc/uvm
 VERDI_HOME     := /package/eda2/synopsys/verdi/X-2025.06-SP2-2
 VCS            := $(VCS_HOME)/linux64/bin/vcs
 VERDI          := $(VERDI_HOME)/bin/verdi
-VCS_SV_FLAGS   = -sverilog -timescale=1ns/1ps -debug_access+all -full64 -top ita_uvm_tb
+VCS_SV_FLAGS   = -sverilog -timescale=1ns/1ps -debug_access+all -full64 -top ita_uvm_tb uvm_dpi.o
 VCS_ELAB_LOG = vcs_elab.log
 VCS_COMPILE_LOG = vcs_compile.log
 
@@ -24,6 +24,8 @@ VCS_DEFINES ?=
 # Compile with VCS using Bender script
 # ============================
 compile:
+	cd $(buildpath) && g++ -w -fPIC -I $(VCS_HOME)/include -I $(UVM_HOME)/src -DVCS \
+	-c $(UVM_HOME)/src/dpi/uvm_dpi.cc -o uvm_dpi.o
 	@echo "=== Compiling with VCS ==="
 	sed -i -e 's/-svinputport=compat//g' -e '/tb_fifo.sv/d' $(buildpath)/compile.tcl
 	cd $(buildpath) && source $(buildpath)/compile.tcl \
@@ -38,14 +40,14 @@ compile:
 # ============================
 run:
 	@echo "=== Running with VCS ==="
-	cd $(buildpath) && ./simv -ucli -do "../sim_ita_tb.tcl"
+	cd $(buildpath) && ./simv +UVM_TESTNAME=ita_simple_test 
 
 # ============================
 # Run simulation with GUI + waves
 # ============================
 wave:
 	@echo "=== Running VCS with waves ==="
-	cd $(buildpath) && DUMPFS=1 ./simv -ucli -do "../sim_ita_tb.tcl"
+	cd $(buildpath) && DUMPFS=1 ./simv 
 
 # ============================
 # HWPE testbench targets
