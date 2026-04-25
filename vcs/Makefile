@@ -9,10 +9,11 @@ BENDER =$(BENDER_INSTALL_DIR)
 
 # VCS Settings
 VCS_HOME       := /package/eda2/synopsys/vcs/X-2025.06-SP2-2
+UVM_HOME       := $(VCS_HOME)/etc/uvm
 VERDI_HOME     := /package/eda2/synopsys/verdi/X-2025.06-SP2-2
 VCS            := $(VCS_HOME)/linux64/bin/vcs
 VERDI          := $(VERDI_HOME)/bin/verdi
-VCS_SV_FLAGS   = -sverilog -timescale=1ns/1ps -debug_access+all -full64 -ntb_opts uvm
+VCS_SV_FLAGS   = -sverilog -timescale=1ns/1ps -debug_access+all -full64 -top ita_uvm_tb
 VCS_ELAB_LOG = vcs_elab.log
 VCS_COMPILE_LOG = vcs_compile.log
 
@@ -27,9 +28,10 @@ compile:
 	sed -i -e 's/-svinputport=compat//g' -e '/tb_fifo.sv/d' $(buildpath)/compile.tcl
 	cd $(buildpath) && source $(buildpath)/compile.tcl \
 	2>&1 | tee $(VCS_COMPILE_LOG)
-	$(VCS) $(VCS_SV_FLAGS) -o ./simv \
-	2>&1 | tee $(VCS_ELAB_LOG)
 	@echo "=== VCS Compilation complete ==="
+	cd $(buildpath) && $(VCS) $(VCS_SV_FLAGS) -o ./simv \
+	2>&1 | tee $(VCS_ELAB_LOG)
+	@echo "=== VCS Elaboration complete ==="
 
 # ============================
 # Run simulation (no GUI)

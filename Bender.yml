@@ -73,6 +73,7 @@ sources:
   - target: test
     files:
       - /package/eda2/synopsys/vcs/X-2025.06-SP2-2/etc/uvm/uvm_pkg.sv
+      - src/tb/uvm_tb/ita_coverage_assertions.sv
       - src/tb/uvm_tb/ita_uvm_pkg.sv 
       - src/tb/uvm_tb/ita_uvm_tb_module.sv
       - src/tb/uvm_tb/axi_memory.sv

@@ -4,6 +4,10 @@
 `ifndef ITA_UVM_TB_TOP_MODULE_SV
 `define ITA_UVM_TB_TOP_MODULE_SV
 
+
+`include "ita_coverage_assertions.sv"
+`include "ita_axi_if.sv"
+
 module ita_uvm_tb;
 
   import uvm_pkg::*;

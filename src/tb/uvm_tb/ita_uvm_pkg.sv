@@ -13,11 +13,11 @@ package ita_uvm_pkg;
 
   // Include UVM files
   `include "ita_uvm_config.sv"
+  `include "ita_config.sv"
   `include "ita_uvm_sequences.sv"
   `include "ita_uvm_agents.sv"
   `include "ita_uvm_env.sv"
   `include "ita_uvm_test.sv"
-  `include "ita_coverage_assertions.sv"
 
 endpackage : ita_uvm_pkg
 
