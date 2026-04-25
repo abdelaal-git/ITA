@@ -100,6 +100,9 @@ module ita_ctrl_regs
     if (!rst_ni) begin
       bvalid <= 1'b0;
       bresp <= 2'b00;
+      for (int i = 0; i < 16; i++) begin
+        ctrl_reg_file[i] <= 32'b0;
+      end
     end else begin
       if (awready && wready) begin
         bvalid <= 1'b1;
@@ -153,15 +156,6 @@ module ita_ctrl_regs
         end
       end else if (s_axil_rready && rvalid) begin
         rvalid <= 1'b0;
-      end
-    end
-  end
-
-  // Initialize registers
-  always_ff @(posedge clk_i, negedge rst_ni) begin
-    if (!rst_ni) begin
-      for (int i = 0; i < 16; i++) begin
-        ctrl_reg_file[i] <= 32'b0;
       end
     end
   end
