@@ -1,4 +1,4 @@
-﻿// Copyright 2024 ITA project.
+// Copyright 2024 ITA project.
 // SPDX-License-Identifier: SHL-0.51
 
 module ita_mem_master

@@ -62,22 +62,6 @@ class ita_config extends uvm_object;
     mem_cfg = mem_base_config::type_id::create("mem_cfg");
   endfunction
 
-  // -------------------------------------------------------------------------
-  // do_print  –  called by `uvm_info when verbosity >= UVM_HIGH
-  // -------------------------------------------------------------------------
-  virtual function void do_print(uvm_printer printer);
-    super.do_print(printer);
-    printer.print_string ("is_active",     is_active.name());
-    printer.print_field_int("tile_e",      tile_e,      32, UVM_DEC);
-    printer.print_field_int("tile_p",      tile_p,      32, UVM_DEC);
-    printer.print_field_int("tile_s",      tile_s,      32, UVM_DEC);
-    printer.print_field_int("tile_f",      tile_f,      32, UVM_DEC);
-    printer.print_field_int("eps_mult",    eps_mult,    32, UVM_DEC);
-    printer.print_field_int("right_shift", right_shift, 32, UVM_DEC);
-    printer.print_field_int("add",         add,         32, UVM_DEC);
-    printer.print_field_int("timeout_cycles", timeout_cycles, 32, UVM_DEC);
-    printer.print_object("mem_cfg", mem_cfg);
-  endfunction
 
   // -------------------------------------------------------------------------
   // do_copy

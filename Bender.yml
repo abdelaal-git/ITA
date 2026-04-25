@@ -53,6 +53,8 @@ sources:
   - src/ita_relu.sv
   - src/ita_activation.sv
   - src/ita_requantization_controller.sv
+  - src/ita_mem_master.sv
+  - src/ita_ctrl_regs.sv
 
   # HWPE sources
   - target: ita_hwpe
@@ -78,7 +80,8 @@ sources:
       - src/tb/uvm_tb/ita_uvm_tb_module.sv
       - src/tb/uvm_tb/axi_memory.sv
     include_dirs:
-            - /package/eda2/synopsys/vcs/X-2025.06-SP2-2/etc/uvm
+            - /package/eda2/synopsys/vcs/X-2025.06-SP2-2/etc/uvm/src/src
+
             - src/tb/uvm_tb
 
   # HWPE TB sources
