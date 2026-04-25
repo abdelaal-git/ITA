@@ -30,11 +30,7 @@ class ita_env extends uvm_env;
     axi_lite_master.is_active = UVM_ACTIVE;
 
     axi4_master = axi4_agent::type_id::create("axi4_master", this);
-    axi4_master.is_active = UVM_ACTIVE;
-
-    // Set virtual interfaces
-    uvm_config_db#(virtual axi_lite_if)::set(this, "axi_lite_master.*", "axi_lite_vif", cfg.axi_lite_vif);
-    uvm_config_db#(virtual axi4_if)::set(this, "axi4_master.*", "axi4_vif", cfg.axi4_vif);
+    axi4_master.is_active = UVM_PASSIVE;
   endfunction
 
   function void connect_phase(uvm_phase phase);

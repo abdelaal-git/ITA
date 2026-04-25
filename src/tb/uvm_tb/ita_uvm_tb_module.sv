@@ -17,222 +17,137 @@ module ita_uvm_tb;
   logic clk_i;
   logic rst_ni;
 
-  // AXI4-Lite slave interface for control registers
-  logic [31:0]  s_axil_awaddr;
-  logic         s_axil_awvalid;
-  logic         s_axil_awready;
-  logic [31:0]  s_axil_wdata;
-  logic [3:0]   s_axil_wstrb;
-  logic         s_axil_wvalid;
-  logic         s_axil_wready;
-  logic [1:0]   s_axil_bresp;
-  logic         s_axil_bvalid;
-  logic         s_axil_bready;
-  logic [31:0]  s_axil_araddr;
-  logic         s_axil_arvalid;
-  logic         s_axil_arready;
-  logic [31:0]  s_axil_rdata;
-  logic [1:0]   s_axil_rresp;
-  logic         s_axil_rvalid;
-  logic         s_axil_rready;
-
-  // AXI4 full master interface for external memory
-  logic [31:0]  m_axi_awaddr;
-  logic [7:0]   m_axi_awlen;
-  logic [2:0]   m_axi_awsize;
-  logic [1:0]   m_axi_awburst;
-  logic         m_axi_awvalid;
-  logic         m_axi_awready;
-  logic [31:0]  m_axi_wdata;
-  logic [3:0]   m_axi_wstrb;
-  logic         m_axi_wlast;
-  logic         m_axi_wvalid;
-  logic         m_axi_wready;
-  logic [1:0]   m_axi_bresp;
-  logic         m_axi_bvalid;
-  logic         m_axi_bready;
-
-  logic [31:0]  m_axi_araddr;
-  logic [7:0]   m_axi_arlen;
-  logic [2:0]   m_axi_arsize;
-  logic [1:0]   m_axi_arburst;
-  logic         m_axi_arvalid;
-  logic         m_axi_arready;
-  logic [31:0]  m_axi_rdata;
-  logic [1:0]   m_axi_rresp;
-  logic         m_axi_rlast;
-  logic         m_axi_rvalid;
-  logic         m_axi_rready;
-
   // -------------------------------------------------------------------------
   // AXI Interface Instantiations
   // -------------------------------------------------------------------------
   axi_lite_if axi_lite_if_inst (.clk(clk_i), .rst_n(rst_ni));
   axi4_if     axi4_if_inst     (.clk(clk_i), .rst_n(rst_ni));
 
-  // Connect AXI-Lite signals from DUT to interface (DUT outputs)
-  assign axi_lite_if_inst.awvalid = s_axil_awvalid;
-  assign axi_lite_if_inst.awready = s_axil_awready;
-  assign axi_lite_if_inst.wvalid  = s_axil_wvalid;
-  assign axi_lite_if_inst.wready  = s_axil_wready;
-  assign axi_lite_if_inst.bresp   = s_axil_bresp;
-  assign axi_lite_if_inst.bvalid  = s_axil_bvalid;
-  assign axi_lite_if_inst.arvalid = s_axil_arvalid;
-  assign axi_lite_if_inst.arready = s_axil_arready;
-  assign axi_lite_if_inst.rdata   = s_axil_rdata;
-  assign axi_lite_if_inst.rresp   = s_axil_rresp;
-  assign axi_lite_if_inst.rvalid  = s_axil_rvalid;
-
-  // Connect AXI4 signals from DUT to memory (DUT outputs)
-  assign axi4_if_inst.awaddr  = m_axi_awaddr;
-  assign axi4_if_inst.awlen   = m_axi_awlen;
-  assign axi4_if_inst.awsize  = m_axi_awsize;
-  assign axi4_if_inst.awburst = m_axi_awburst;
-  assign axi4_if_inst.awvalid = m_axi_awvalid;
-  assign axi4_if_inst.awready = m_axi_awready;
-  assign axi4_if_inst.wdata   = m_axi_wdata;
-  assign axi4_if_inst.wstrb   = m_axi_wstrb;
-  assign axi4_if_inst.wlast   = m_axi_wlast;
-  assign axi4_if_inst.wvalid  = m_axi_wvalid;
-  assign axi4_if_inst.wready  = m_axi_wready;
-  assign axi4_if_inst.bresp   = m_axi_bresp;
-  assign axi4_if_inst.bvalid  = m_axi_bvalid;
-  assign axi4_if_inst.araddr  = m_axi_araddr;
-  assign axi4_if_inst.arlen   = m_axi_arlen;
-  assign axi4_if_inst.arsize  = m_axi_arsize;
-  assign axi4_if_inst.arburst = m_axi_arburst;
-  assign axi4_if_inst.arvalid = m_axi_arvalid;
-  assign axi4_if_inst.arready = m_axi_arready;
-  assign axi4_if_inst.rdata   = m_axi_rdata;
-  assign axi4_if_inst.rresp   = m_axi_rresp;
-  assign axi4_if_inst.rlast   = m_axi_rlast;
-  assign axi4_if_inst.rvalid  = m_axi_rvalid;
-
   // DUT instantiation
   ita i_ita (
     .clk_i             (clk_i               ),
     .rst_ni            (rst_ni              ),
-    .s_axil_awaddr     (s_axil_awaddr       ),
-    .s_axil_awvalid    (s_axil_awvalid      ),
-    .s_axil_awready    (s_axil_awready      ),
-    .s_axil_wdata      (s_axil_wdata        ),
-    .s_axil_wstrb      (s_axil_wstrb        ),
-    .s_axil_wvalid     (s_axil_wvalid       ),
-    .s_axil_wready     (s_axil_wready       ),
-    .s_axil_bresp      (s_axil_bresp        ),
-    .s_axil_bvalid     (s_axil_bvalid       ),
-    .s_axil_bready     (s_axil_bready       ),
-    .s_axil_araddr     (s_axil_araddr       ),
-    .s_axil_arvalid    (s_axil_arvalid      ),
-    .s_axil_arready    (s_axil_arready      ),
-    .s_axil_rdata      (s_axil_rdata        ),
-    .s_axil_rresp      (s_axil_rresp        ),
-    .s_axil_rvalid     (s_axil_rvalid       ),
-    .s_axil_rready     (s_axil_rready       ),
-    .m_axi_awaddr      (m_axi_awaddr        ),
-    .m_axi_awlen       (m_axi_awlen         ),
-    .m_axi_awsize      (m_axi_awsize        ),
-    .m_axi_awburst     (m_axi_awburst       ),
-    .m_axi_awvalid     (m_axi_awvalid       ),
-    .m_axi_awready     (m_axi_awready       ),
-    .m_axi_wdata       (m_axi_wdata         ),
-    .m_axi_wstrb       (m_axi_wstrb         ),
-    .m_axi_wlast       (m_axi_wlast         ),
-    .m_axi_wvalid      (m_axi_wvalid        ),
-    .m_axi_wready      (m_axi_wready        ),
-    .m_axi_bresp       (m_axi_bresp         ),
-    .m_axi_bvalid      (m_axi_bvalid        ),
-    .m_axi_bready      (m_axi_bready        ),
-    .m_axi_araddr      (m_axi_araddr        ),
-    .m_axi_arlen       (m_axi_arlen         ),
-    .m_axi_arsize      (m_axi_arsize        ),
-    .m_axi_arburst     (m_axi_arburst       ),
-    .m_axi_arvalid     (m_axi_arvalid       ),
-    .m_axi_arready     (m_axi_arready       ),
-    .m_axi_rdata       (m_axi_rdata         ),
-    .m_axi_rresp       (m_axi_rresp         ),
-    .m_axi_rlast       (m_axi_rlast         ),
-    .m_axi_rvalid      (m_axi_rvalid        ),
-    .m_axi_rready      (m_axi_rready        )
+    .s_axil_awaddr     (axi_lite_if_inst.awaddr       ),
+    .s_axil_awvalid    (axi_lite_if_inst.awvalid      ),
+    .s_axil_awready    (axi_lite_if_inst.awready      ),
+    .s_axil_wdata      (axi_lite_if_inst.wdata        ),
+    .s_axil_wstrb      (axi_lite_if_inst.wstrb        ),
+    .s_axil_wvalid     (axi_lite_if_inst.wvalid       ),
+    .s_axil_wready     (axi_lite_if_inst.wready       ),
+    .s_axil_bresp      (axi_lite_if_inst.bresp        ),
+    .s_axil_bvalid     (axi_lite_if_inst.bvalid       ),
+    .s_axil_bready     (axi_lite_if_inst.bready       ),
+    .s_axil_araddr     (axi_lite_if_inst.araddr       ),
+    .s_axil_arvalid    (axi_lite_if_inst.arvalid      ),
+    .s_axil_arready    (axi_lite_if_inst.arready      ),
+    .s_axil_rdata      (axi_lite_if_inst.rdata        ),
+    .s_axil_rresp      (axi_lite_if_inst.rresp        ),
+    .s_axil_rvalid     (axi_lite_if_inst.rvalid       ),
+    .s_axil_rready     (axi_lite_if_inst.rready       ),
+    .m_axi_awaddr      (axi4_if_inst.awaddr        ),
+    .m_axi_awlen       (axi4_if_inst.awlen         ),
+    .m_axi_awsize      (axi4_if_inst.awsize        ),
+    .m_axi_awburst     (axi4_if_inst.awburst       ),
+    .m_axi_awvalid     (axi4_if_inst.awvalid       ),
+    .m_axi_awready     (axi4_if_inst.awready       ),
+    .m_axi_wdata       (axi4_if_inst.wdata         ),
+    .m_axi_wstrb       (axi4_if_inst.wstrb         ),
+    .m_axi_wlast       (axi4_if_inst.wlast         ),
+    .m_axi_wvalid      (axi4_if_inst.wvalid        ),
+    .m_axi_wready      (axi4_if_inst.wready        ),
+    .m_axi_bresp       (axi4_if_inst.bresp         ),
+    .m_axi_bvalid      (axi4_if_inst.bvalid        ),
+    .m_axi_bready      (axi4_if_inst.bready        ),
+    .m_axi_araddr      (axi4_if_inst.araddr        ),
+    .m_axi_arlen       (axi4_if_inst.arlen         ),
+    .m_axi_arsize      (axi4_if_inst.arsize        ),
+    .m_axi_arburst     (axi4_if_inst.arburst       ),
+    .m_axi_arvalid     (axi4_if_inst.arvalid       ),
+    .m_axi_arready     (axi4_if_inst.arready       ),
+    .m_axi_rdata       (axi4_if_inst.rdata         ),
+    .m_axi_rresp       (axi4_if_inst.rresp         ),
+    .m_axi_rlast       (axi4_if_inst.rlast         ),
+    .m_axi_rvalid      (axi4_if_inst.rvalid        ),
+    .m_axi_rready      (axi4_if_inst.rready        )
   );
 
   // AXI Memory Model
   axi_memory i_axi_memory (
     .clk_i         (clk_i         ),
     .rst_ni        (rst_ni        ),
-    .awaddr_i      (m_axi_awaddr  ),
-    .awlen_i       (m_axi_awlen   ),
-    .awsize_i      (m_axi_awsize  ),
-    .awburst_i     (m_axi_awburst ),
-    .awvalid_i     (m_axi_awvalid ),
-    .awready_o     (m_axi_awready ),
-    .wdata_i       (m_axi_wdata   ),
-    .wstrb_i       (m_axi_wstrb   ),
-    .wlast_i       (m_axi_wlast   ),
-    .wvalid_i      (m_axi_wvalid  ),
-    .wready_o      (m_axi_wready  ),
-    .bresp_o       (m_axi_bresp   ),
-    .bvalid_o      (m_axi_bvalid  ),
-    .bready_i      (m_axi_bready  ),
-    .araddr_i      (m_axi_araddr  ),
-    .arlen_i       (m_axi_arlen   ),
-    .arsize_i      (m_axi_arsize  ),
-    .arburst_i     (m_axi_arburst ),
-    .arvalid_i     (m_axi_arvalid ),
-    .arready_o     (m_axi_arready ),
-    .rdata_o       (m_axi_rdata   ),
-    .rresp_o       (m_axi_rresp   ),
-    .rlast_o       (m_axi_rlast   ),
-    .rvalid_o      (m_axi_rvalid  ),
-    .rready_i      (m_axi_rready  )
+    .awaddr_i      (axi4_if_inst.awaddr  ),
+    .awlen_i       (axi4_if_inst.awlen   ),
+    .awsize_i      (axi4_if_inst.awsize  ),
+    .awburst_i     (axi4_if_inst.awburst ),
+    .awvalid_i     (axi4_if_inst.awvalid ),
+    .awready_o     (axi4_if_inst.awready ),
+    .wdata_i       (axi4_if_inst.wdata   ),
+    .wstrb_i       (axi4_if_inst.wstrb   ),
+    .wlast_i       (axi4_if_inst.wlast   ),
+    .wvalid_i      (axi4_if_inst.wvalid  ),
+    .wready_o      (axi4_if_inst.wready  ),
+    .bresp_o       (axi4_if_inst.bresp   ),
+    .bvalid_o      (axi4_if_inst.bvalid  ),
+    .bready_i      (axi4_if_inst.bready  ),
+    .araddr_i      (axi4_if_inst.araddr  ),
+    .arlen_i       (axi4_if_inst.arlen   ),
+    .arsize_i      (axi4_if_inst.arsize  ),
+    .arburst_i     (axi4_if_inst.arburst ),
+    .arvalid_i     (axi4_if_inst.arvalid ),
+    .arready_o     (axi4_if_inst.arready ),
+    .rdata_o       (axi4_if_inst.rdata   ),
+    .rresp_o       (axi4_if_inst.rresp   ),
+    .rlast_o       (axi4_if_inst.rlast   ),
+    .rvalid_o      (axi4_if_inst.rvalid  ),
+    .rready_i      (axi4_if_inst.rready  )
   );
 
   // Coverage and Assertions Module
   ita_coverage_assertions i_coverage_assertions (
     .clk_i             (clk_i               ),
     .rst_ni            (rst_ni              ),
-    .s_axil_awaddr     (s_axil_awaddr       ),
-    .s_axil_awvalid    (s_axil_awvalid      ),
-    .s_axil_awready    (s_axil_awready      ),
-    .s_axil_wdata      (s_axil_wdata        ),
-    .s_axil_wstrb      (s_axil_wstrb        ),
-    .s_axil_wvalid     (s_axil_wvalid       ),
-    .s_axil_wready     (s_axil_wready       ),
-    .s_axil_bresp      (s_axil_bresp        ),
-    .s_axil_bvalid     (s_axil_bvalid       ),
-    .s_axil_bready     (s_axil_bready       ),
-    .s_axil_araddr     (s_axil_araddr       ),
-    .s_axil_arvalid    (s_axil_arvalid      ),
-    .s_axil_arready    (s_axil_arready      ),
-    .s_axil_rdata      (s_axil_rdata        ),
-    .s_axil_rresp      (s_axil_rresp        ),
-    .s_axil_rvalid     (s_axil_rvalid       ),
-    .s_axil_rready     (s_axil_rready       ),
-    .m_axi_awaddr      (m_axi_awaddr        ),
-    .m_axi_awlen       (m_axi_awlen         ),
-    .m_axi_awsize      (m_axi_awsize        ),
-    .m_axi_awburst     (m_axi_awburst       ),
-    .m_axi_awvalid     (m_axi_awvalid       ),
-    .m_axi_awready     (m_axi_awready       ),
-    .m_axi_wdata       (m_axi_wdata         ),
-    .m_axi_wstrb       (m_axi_wstrb         ),
-    .m_axi_wlast       (m_axi_wlast         ),
-    .m_axi_wvalid      (m_axi_wvalid        ),
-    .m_axi_wready      (m_axi_wready        ),
-    .m_axi_bresp       (m_axi_bresp         ),
-    .m_axi_bvalid      (m_axi_bvalid        ),
-    .m_axi_bready      (m_axi_bready        ),
-    .m_axi_araddr      (m_axi_araddr        ),
-    .m_axi_arlen       (m_axi_arlen         ),
-    .m_axi_arsize      (m_axi_arsize        ),
-    .m_axi_arburst     (m_axi_arburst       ),
-    .m_axi_arvalid     (m_axi_arvalid       ),
-    .m_axi_arready     (m_axi_arready       ),
-    .m_axi_rdata       (m_axi_rdata         ),
-    .m_axi_rresp       (m_axi_rresp         ),
-    .m_axi_rlast       (m_axi_rlast         ),
-    .m_axi_rvalid      (m_axi_rvalid        ),
-    .m_axi_rready      (m_axi_rready        ),
+    .s_axil_awaddr     (axi_lite_if_inst.awaddr       ),
+    .s_axil_awvalid    (axi_lite_if_inst.awvalid      ),
+    .s_axil_awready    (axi_lite_if_inst.awready      ),
+    .s_axil_wdata      (axi_lite_if_inst.wdata        ),
+    .s_axil_wstrb      (axi_lite_if_inst.wstrb        ),
+    .s_axil_wvalid     (axi_lite_if_inst.wvalid       ),
+    .s_axil_wready     (axi_lite_if_inst.wready       ),
+    .s_axil_bresp      (axi_lite_if_inst.bresp        ),
+    .s_axil_bvalid     (axi_lite_if_inst.bvalid       ),
+    .s_axil_bready     (axi_lite_if_inst.bready       ),
+    .s_axil_araddr     (axi_lite_if_inst.araddr       ),
+    .s_axil_arvalid    (axi_lite_if_inst.arvalid      ),
+    .s_axil_arready    (axi_lite_if_inst.arready      ),
+    .s_axil_rdata      (axi_lite_if_inst.rdata        ),
+    .s_axil_rresp      (axi_lite_if_inst.rresp        ),
+    .s_axil_rvalid     (axi_lite_if_inst.rvalid       ),
+    .s_axil_rready     (axi_lite_if_inst.rready       ),
+    .m_axi_awaddr      (axi4_if_inst.awaddr        ),
+    .m_axi_awlen       (axi4_if_inst.awlen         ),
+    .m_axi_awsize      (axi4_if_inst.awsize        ),
+    .m_axi_awburst     (axi4_if_inst.awburst       ),
+    .m_axi_awvalid     (axi4_if_inst.awvalid       ),
+    .m_axi_awready     (axi4_if_inst.awready       ),
+    .m_axi_wdata       (axi4_if_inst.wdata         ),
+    .m_axi_wstrb       (axi4_if_inst.wstrb         ),
+    .m_axi_wlast       (axi4_if_inst.wlast         ),
+    .m_axi_wvalid      (axi4_if_inst.wvalid        ),
+    .m_axi_wready      (axi4_if_inst.wready        ),
+    .m_axi_bresp       (axi4_if_inst.bresp         ),
+    .m_axi_bvalid      (axi4_if_inst.bvalid        ),
+    .m_axi_bready      (axi4_if_inst.bready        ),
+    .m_axi_araddr      (axi4_if_inst.araddr        ),
+    .m_axi_arlen       (axi4_if_inst.arlen         ),
+    .m_axi_arsize      (axi4_if_inst.arsize        ),
+    .m_axi_arburst     (axi4_if_inst.arburst       ),
+    .m_axi_arvalid     (axi4_if_inst.arvalid       ),
+    .m_axi_arready     (axi4_if_inst.arready       ),
+    .m_axi_rdata       (axi4_if_inst.rdata         ),
+    .m_axi_rresp       (axi4_if_inst.rresp         ),
+    .m_axi_rlast       (axi4_if_inst.rlast         ),
+    .m_axi_rvalid      (axi4_if_inst.rvalid        ),
+    .m_axi_rready      (axi4_if_inst.rready        ),
     .step              (i_ita.i_controller.step_o),
     .calc_en           (i_ita.i_controller.calc_en_o),
     .first_inner_tile  (i_ita.i_controller.first_inner_tile_o),

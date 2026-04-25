@@ -8,14 +8,6 @@ class ita_config extends uvm_object;
   `uvm_object_utils(ita_config)
 
   // -------------------------------------------------------------------------
-  // Virtual interface handle
-  // Passed from the top-level testbench to the agent's driver and monitor
-  // via uvm_config_db.
-  // -------------------------------------------------------------------------
-  virtual axi_lite_if axi_lite_vif;
-  virtual axi4_if     axi4_vif;
-
-  // -------------------------------------------------------------------------
   // Agent activity mode
   // UVM_ACTIVE  – agent drives the DUT (driver + sequencer + monitor)
   // UVM_PASSIVE – agent only observes (monitor only)
@@ -71,8 +63,6 @@ class ita_config extends uvm_object;
     super.do_copy(rhs);
     if (!$cast(rhs_, rhs))
       `uvm_fatal("CONFIG", "do_copy: type mismatch")
-    axi_lite_vif   = rhs_.axi_lite_vif;
-    axi4_vif       = rhs_.axi4_vif;
     is_active      = rhs_.is_active;
     tile_e         = rhs_.tile_e;
     tile_p         = rhs_.tile_p;
