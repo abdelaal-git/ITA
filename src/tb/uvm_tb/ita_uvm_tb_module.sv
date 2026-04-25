@@ -64,6 +64,58 @@ module ita_uvm_tb;
   logic         m_axi_rvalid;
   logic         m_axi_rready;
 
+  // -------------------------------------------------------------------------
+  // AXI Interface Instantiations
+  // -------------------------------------------------------------------------
+  axi_lite_if axi_lite_if_inst (.clk(clk_i), .rst_n(rst_ni));
+  axi4_if     axi4_if_inst     (.clk(clk_i), .rst_n(rst_ni));
+
+  // Connect AXI-Lite signals to interface (slave - from DUT)
+  assign axi_lite_if_inst.awaddr   = s_axil_awaddr;
+  assign axi_lite_if_inst.awvalid  = s_axil_awvalid;
+  assign s_axil_awready            = axi_lite_if_inst.awready;
+  assign axi_lite_if_inst.wdata    = s_axil_wdata;
+  assign axi_lite_if_inst.wstrb    = s_axil_wstrb;
+  assign axi_lite_if_inst.wvalid   = s_axil_wvalid;
+  assign s_axil_wready             = axi_lite_if_inst.wready;
+  assign s_axil_bresp              = axi_lite_if_inst.bresp;
+  assign s_axil_bvalid             = axi_lite_if_inst.bvalid;
+  assign axi_lite_if_inst.bready   = s_axil_bready;
+  assign axi_lite_if_inst.araddr   = s_axil_araddr;
+  assign axi_lite_if_inst.arvalid  = s_axil_arvalid;
+  assign s_axil_arready            = axi_lite_if_inst.arready;
+  assign s_axil_rdata              = axi_lite_if_inst.rdata;
+  assign s_axil_rresp              = axi_lite_if_inst.rresp;
+  assign s_axil_rvalid             = axi_lite_if_inst.rvalid;
+  assign axi_lite_if_inst.rready   = s_axil_rready;
+
+  // Connect AXI4 signals to interface (master - to memory)
+  assign axi4_if_inst.awaddr   = m_axi_awaddr;
+  assign axi4_if_inst.awlen    = m_axi_awlen;
+  assign axi4_if_inst.awsize   = m_axi_awsize;
+  assign axi4_if_inst.awburst = m_axi_awburst;
+  assign axi4_if_inst.awvalid = m_axi_awvalid;
+  assign m_axi_awready         = axi4_if_inst.awready;
+  assign axi4_if_inst.wdata   = m_axi_wdata;
+  assign axi4_if_inst.wstrb   = m_axi_wstrb;
+  assign axi4_if_inst.wlast   = m_axi_wlast;
+  assign axi4_if_inst.wvalid  = m_axi_wvalid;
+  assign m_axi_wready         = axi4_if_inst.wready;
+  assign m_axi_bresp          = axi4_if_inst.bresp;
+  assign m_axi_bvalid         = axi4_if_inst.bvalid;
+  assign axi4_if_inst.bready  = m_axi_bready;
+  assign axi4_if_inst.araddr  = m_axi_araddr;
+  assign axi4_if_inst.arlen   = m_axi_arlen;
+  assign axi4_if_inst.arsize  = m_axi_arsize;
+  assign axi4_if_inst.arburst = m_axi_arburst;
+  assign axi4_if_inst.arvalid = m_axi_arvalid;
+  assign m_axi_arready        = axi4_if_inst.arready;
+  assign m_axi_rdata          = axi4_if_inst.rdata;
+  assign m_axi_rresp          = axi4_if_inst.rresp;
+  assign m_axi_rlast          = axi4_if_inst.rlast;
+  assign m_axi_rvalid         = axi4_if_inst.rvalid;
+  assign axi4_if_inst.rready  = m_axi_rready;
+
   // DUT instantiation
   ita i_ita (
     .clk_i             (clk_i               ),
@@ -226,6 +278,20 @@ module ita_uvm_tb;
   initial begin
     // Run UVM test
     run_test();
+  end
+
+  // -------------------------------------------------------------------------
+  // Set virtual interfaces in UVM config_db
+  // This makes them available to the test and agents
+  // -------------------------------------------------------------------------
+  initial begin
+    // Wait for reset to complete
+    #100ns;
+    #10ns;  // Small delay to ensure UVM is ready
+    
+    // Set the interfaces in config_db for UVM test
+    uvm_config_db#(virtual axi_lite_if)::set(null, "uvm_test_top.env.axi_lite_master", "axi_lite_vif", axi_lite_if_inst);
+    uvm_config_db#(virtual axi4_if)::set(null, "uvm_test_top.env.axi4_master", "axi4_vif", axi4_if_inst);
   end
 
 endmodule
