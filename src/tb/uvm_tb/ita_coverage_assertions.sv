@@ -445,12 +445,12 @@ idle_to_valid_states: assert property (
 // FIFO Assertions
 fifo_no_overflow: assert property (
   @(posedge clk_i) disable iff (!rst_ni)
-  fifo_full |-> ##1 !fifo_full // Once full, should not stay full indefinitely
+  fifo_full |-> ##[0:$] !fifo_full // Once full, should not stay full indefinitely
 ) else $warning("FIFO may be stuck in full state");
 
 fifo_no_underflow: assert property (
   @(posedge clk_i) disable iff (!rst_ni)
-  fifo_empty |-> ##1 !fifo_empty // Once empty, should not stay empty indefinitely
+  fifo_empty |-> ##[0:$] !fifo_empty // Once empty, should not stay empty indefinitely
 ) else $warning("FIFO may be stuck in empty state");
 
 fifo_full_empty_mutex: assert property (

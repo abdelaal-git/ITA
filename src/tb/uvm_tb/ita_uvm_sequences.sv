@@ -17,11 +17,13 @@ class axi_lite_write_seq extends uvm_sequence#(axi_lite_txn);
 
   task body();
     req = axi_lite_txn::type_id::create("req");
+	  `uvm_info("SEQ", "Starting seq...", UVM_MEDIUM)
     start_item(req);
     req.addr = addr;
     req.data = data;
     req.write = 1'b1;
     finish_item(req);
+    `uvm_info("SEQ", "Ending seq...", UVM_MEDIUM)
   endtask
 
 endclass : axi_lite_write_seq
@@ -38,13 +40,16 @@ class axi_lite_read_seq extends uvm_sequence#(axi_lite_txn);
   endfunction
 
   task body();
+	  
     req = axi_lite_txn::type_id::create("req");
+    `uvm_info("SEQ", "Starting seq...", UVM_MEDIUM)
     start_item(req);
     req.addr = addr;
     req.write = 1'b0;
     finish_item(req);
     get_response(rsp);
     data = rsp.data;
+    `uvm_info("SEQ", "Ending seq...", UVM_MEDIUM)
   endtask
 
 endclass : axi_lite_read_seq
@@ -61,10 +66,13 @@ class ctrl_reg_write_seq extends uvm_sequence#(axi_lite_txn);
 
   task body();
     logic [383:0] flat = ctrl;
+    `uvm_info("SEQ", "Starting seq...", UVM_MEDIUM)
     for (int i = 0; i < 12; i++) begin
+	    `uvm_info("SEQ", $psprintf("Writing addr = %0d, data = %0d", i, flat[31:0]), UVM_MEDIUM)
       `uvm_do_with(req, {req.addr == 32'h00000000 + i*4; req.data == flat[31:0]; req.write == 1'b1;})
       flat = flat >> 32;
     end
+    `uvm_info("SEQ", "Ending seq...", UVM_MEDIUM)
   endtask
 
 endclass : ctrl_reg_write_seq
@@ -80,6 +88,7 @@ class mem_base_write_seq extends uvm_sequence#(axi_lite_txn);
   endfunction
 
   task body();
+	  `uvm_info("SEQ", "Starting seq...", UVM_MEDIUM)
     // Write input base address (register 12)
     `uvm_do_with(req, {req.addr == 32'h30; req.data == mem_cfg.input_base; req.write == 1'b1;})
     // Write weight base address (register 13)
@@ -88,6 +97,7 @@ class mem_base_write_seq extends uvm_sequence#(axi_lite_txn);
     `uvm_do_with(req, {req.addr == 32'h38; req.data == mem_cfg.bias_base; req.write == 1'b1;})
     // Write output base address (register 15)
     `uvm_do_with(req, {req.addr == 32'h3C; req.data == mem_cfg.output_base; req.write == 1'b1;})
+    `uvm_info("SEQ", "Ending seq...", UVM_MEDIUM)
   endtask
 
 endclass : mem_base_write_seq
@@ -105,12 +115,14 @@ class axi4_write_seq extends uvm_sequence#(axi4_txn);
 
   task body();
     req = axi4_txn::type_id::create("req");
+	  `uvm_info("SEQ", "Starting seq...", UVM_MEDIUM)
     start_item(req);
     req.addr = addr;
     req.data = data;
     req.write = 1'b1;
     req.len = data.size() - 1;
     finish_item(req);
+    `uvm_info("SEQ", "Ending seq...", UVM_MEDIUM)
   endtask
 
 endclass : axi4_write_seq
@@ -129,6 +141,7 @@ class axi4_read_seq extends uvm_sequence#(axi4_txn);
 
   task body();
     req = axi4_txn::type_id::create("req");
+	  `uvm_info("SEQ", "Starting axi4_read_seq...", UVM_MEDIUM)
     start_item(req);
     req.addr = addr;
     req.write = 1'b0;
@@ -136,6 +149,7 @@ class axi4_read_seq extends uvm_sequence#(axi4_txn);
     finish_item(req);
     get_response(rsp);
     data = rsp.data;
+    `uvm_info("SEQ", "Ending axi4_read_seq...", UVM_MEDIUM)
   endtask
 
 endclass : axi4_read_seq
@@ -164,6 +178,7 @@ class ita_test_seq extends uvm_sequence#(axi_lite_txn);
   endfunction
 
   task body();
+    `uvm_info("SEQ", "Starting test_seq...", UVM_MEDIUM)
     // Get configuration
     if (!uvm_config_db#(ita_config)::get(null, get_full_name(), "cfg", cfg))
       `uvm_error("SEQ", "Configuration not found")
@@ -201,6 +216,7 @@ class ita_test_seq extends uvm_sequence#(axi_lite_txn);
 
     // Verify results
     verify_results();
+    `uvm_info("SEQ", "Ending test_seq...", UVM_MEDIUM)
   endtask
 
   task write_data_to_memory(bit [31:0] base_addr, logic [31:0] data[]);

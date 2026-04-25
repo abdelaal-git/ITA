@@ -52,7 +52,7 @@ ifeq ($(target), sim_ita_hwpe_tb)
 	vlog_defs += -DHCI_ASSERT_DELAY=\#41ps
 endif
 
-VLOG_FLAGS += -override_timescale=1ns/1ps -ntb_opts uvm -debug_access+all -CFLAGS uvm_dpi.o
+VLOG_FLAGS += -override_timescale=1ns/1ps -ntb_opts uvm -debug_access+all -CFLAGS uvm_dpi.o -kdb
 
 
 # Environment variables for UVM

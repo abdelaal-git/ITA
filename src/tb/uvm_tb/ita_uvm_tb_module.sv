@@ -192,6 +192,9 @@ module ita_uvm_tb;
   // This makes them available to the test and agents
   // -------------------------------------------------------------------------
   initial begin
+    $fsdbDumpfile("sim.fsdb");
+    $fsdbDumpvars(0, ita_uvm_tb, "+all");
+    $fsdbDumpMDA;
     // Set the interfaces in config_db for UVM test
     uvm_config_db#(virtual axi_lite_if)::set(null, "uvm_test_top.env.axi_lite_master*", "axi_lite_vif", axi_lite_if_inst);
     uvm_config_db#(virtual axi4_if)::set(null, "uvm_test_top.env.axi4_master*", "axi4_vif", axi4_if_inst);

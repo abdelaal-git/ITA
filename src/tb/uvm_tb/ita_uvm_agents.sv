@@ -31,6 +31,7 @@ class axi_lite_driver extends uvm_driver#(axi_lite_txn);
   endtask
 
   task drive_transaction(axi_lite_txn txn);
+	  `uvm_info("Driver", $psprintf("Got transaction addr = %0d, data = %0d", txn.addr, txn.data), UVM_MEDIUM)
     if (txn.write) begin
       // Write transaction
       vif.drv_cb.awaddr <= txn.addr;

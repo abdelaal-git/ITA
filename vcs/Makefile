@@ -13,7 +13,7 @@ UVM_HOME       := $(VCS_HOME)/etc/uvm
 VERDI_HOME     := /package/eda2/synopsys/verdi/X-2025.06-SP2-2
 VCS            := $(VCS_HOME)/linux64/bin/vcs
 VERDI          := $(VERDI_HOME)/bin/verdi
-VCS_SV_FLAGS   = -sverilog -timescale=1ns/1ps -debug_access+all -full64 -top ita_uvm_tb uvm_dpi.o
+VCS_SV_FLAGS   = -sverilog -timescale=1ns/1ps -debug_access+all -full64 -top ita_uvm_tb uvm_dpi.o -kdb
 VCS_ELAB_LOG = vcs_elab.log
 VCS_COMPILE_LOG = vcs_compile.log
 
@@ -40,14 +40,14 @@ compile:
 # ============================
 run:
 	@echo "=== Running with VCS ==="
-	cd $(buildpath) && ./simv +UVM_TESTNAME=ita_simple_test 
+	cd $(buildpath) && ./simv +fsdbfile+sim.fsdb +UVM_TESTNAME=ita_simple_test | tee run.log 
 
 # ============================
 # Run simulation with GUI + waves
 # ============================
 wave:
 	@echo "=== Running VCS with waves ==="
-	cd $(buildpath) && DUMPFS=1 ./simv 
+	cd $(buildpath) && ./simv +fsdbfile+sim.fsdb | tee run.log 
 
 # ============================
 # HWPE testbench targets

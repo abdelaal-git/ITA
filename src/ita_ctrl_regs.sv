@@ -36,6 +36,13 @@ module ita_ctrl_regs
   output logic [31:0]  mem_bias_base_addr_o,
   output logic [31:0]  mem_output_base_addr_o
 );
+// Latch signals for write
+logic [ADDR_WIDTH-1:0]   awaddr_latched;
+    logic [DATA_WIDTH-1:0]   wdata_latched;
+    logic [DATA_WIDTH/8-1:0] wstrb_latched;
+    logic aw_done;
+    logic w_done;
+
 
   // Control registers
   logic [31:0] ctrl_reg_file [0:15];
