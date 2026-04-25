@@ -72,10 +72,13 @@ sources:
   # TB sources
   - target: test
     files:
-      - src/tb/ita_tb.sv
-      - src/tb/clk_rst_gen.sv
-      - src/tb/rst_gen.sv
-      - src/tb/activation_tb.sv
+      - /package/eda2/synopsys/vcs/X-2025.06-SP2-2/etc/uvm/uvm_pkg.sv
+      - src/tb/uvm_tb/ita_uvm_pkg.sv 
+      - src/tb/uvm_tb/ita_uvm_tb_module.sv
+      - src/tb/uvm_tb/axi_memory.sv
+    include_dirs:
+            - /package/eda2/synopsys/vcs/X-2025.06-SP2-2/etc/uvm
+            - src/tb/uvm_tb
 
   # HWPE TB sources
   - target: ita_hwpe_test

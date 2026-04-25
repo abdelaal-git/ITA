@@ -6,9 +6,6 @@ module ita_tb;
 
   import ita_package::*;
 
-  timeunit 10ps;
-  timeprecision 1ps;
-
   localparam time CLK_PERIOD          = 2000ps;
   localparam time APPL_DELAY          = 400ps;
   localparam time ACQ_DELAY           = 1600ps;
