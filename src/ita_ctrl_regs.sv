@@ -5,13 +5,13 @@
 /**
   ITA Control Registers Module with AXI4-Lite interface.
 */
-
+import ita_package::*;
 module ita_ctrl_regs #(
   parameter int ADDR_WIDTH = 32,
   parameter int DATA_WIDTH = 32,
   parameter int NUM_REGS   = 16   // 16 registers (0 to 15)
 )
-  import ita_package::*;
+  
 (
   input  logic                    clk_i,
   input  logic                    rst_ni,
@@ -37,7 +37,7 @@ module ita_ctrl_regs #(
   output logic [DATA_WIDTH-1:0]   s_axil_rdata,
   output logic [1:0]              s_axil_rresp,
   output logic                    s_axil_rvalid,
-  input  logic                    s_axil_rready
+  input  logic                    s_axil_rready,
   // Control output
   output ctrl_t        ctrl_reg_o,
   output logic [ADDR_WIDTH-1:0]  mem_input_base_addr_o,

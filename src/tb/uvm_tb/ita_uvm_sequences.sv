@@ -197,13 +197,13 @@ class ita_test_seq extends uvm_sequence#(axi_lite_txn);
     mem_seq.start(m_sequencer);
 
     // Write input data to memory
-    write_data_to_memory(cfg.mem_cfg.input_base, input_data);
+    //write_data_to_memory(cfg.mem_cfg.input_base, input_data); //FIXME this needs to be backdoor since the memory's master is currently only DUT
 
     // Write weight data to memory
-    write_data_to_memory(cfg.mem_cfg.weight_base, weight_data);
+    //write_data_to_memory(cfg.mem_cfg.weight_base, weight_data);//FIXME this needs to be backdoor since the memory's master is currently only DUT
 
     // Write bias data to memory
-    write_data_to_memory(cfg.mem_cfg.bias_base, bias_data);
+    //write_data_to_memory(cfg.mem_cfg.bias_base, bias_data);//FIXME this needs to be backdoor since the memory's master is currently only DUT
 
     // Start ITA computation
     start_ita_computation();
@@ -212,7 +212,7 @@ class ita_test_seq extends uvm_sequence#(axi_lite_txn);
     #1000ns;
 
     // Read output data from memory
-    read_data_from_memory(cfg.mem_cfg.output_base, expected_output.size());
+    //read_data_from_memory(cfg.mem_cfg.output_base, expected_output.size());//FIXME this needs to be backdoor since the memory's master is currently only DUT
 
     // Verify results
     verify_results();
