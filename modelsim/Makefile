@@ -52,3 +52,39 @@ sim_activation_tb: lib compile
 
 sim_uvm_tb: lib
 	cd $(buildpath) && $(VLOG) -sv +incdir+../../src/tb +incdir+../../src +define+UVM ../../src/tb/ita_uvm_pkg.sv ../../src/tb/ita_uvm_test.sv ../../src/ita.sv ../../src/ita_ctrl_regs.sv ../../src/ita_mem_master.sv ../../src/tb/axi_memory.sv -L uvm_pkg && $(VSIM) -c ita_uvm_tb -do "run -all; quit"
+
+# ============================
+# VCS Simulation Targets
+# ============================
+VCS_PATH       ?= /usr/synopsys/vcs
+VCS            = $(VCS_PATH)/bin/vcs
+VCS_SV_FLAGS   = -sverilog -timescale=1ns/1ps -vpi
+VCS_COMPILE_LOG = vcs_compile.log
+
+vcs-compile: lib
+	@echo "=== Compiling with VCS ==="
+	cd $(buildpath) && $(VCS) $(VCS_SV_FLAGS) -o simv \
+		+incdir+../../src/tb+../../src \
+		$(shell cat compile.tcl | sed 's/vlog/vcs -k/g' | sed 's/-svinputport=compat//g') \
+		> $(VCS_COMPILE_LOG) 2>&1
+
+vcs-compile-hwpe: lib
+	@echo "=== Compiling HWPE testbench with VCS ==="
+	cd $(buildpath) && $(VCS) $(VCS_SV_FLAGS) -o simv \
+		+incdir+../../src/tb+../../src+../../src/hwpe/tb \
+		$(shell cat compile.tcl | sed 's/vlog/vcs -k/g' | sed 's/-svinputport=compat//g') \
+		> $(VCS_COMPILE_LOG) 2>&1
+
+vcs-run:
+	@echo "=== Running with VCS ==="
+	cd $(buildpath) && ./simv -ucli -do "../sim_ita_tb.tcl"
+
+vcs-wave:
+	@echo "=== Running VCS with waves ==="
+	cd $(buildpath) && DUMPFS=1 ./simv -ucli -do "../sim_ita_tb.tcl"
+
+vcs-sim_ita_hwpe_tb: vcs-compile-hwpe
+	cd $(buildpath) && ./simv -ucli -do "../sim_ita_hwpe_tb.tcl"
+
+vcs-sim_ita_tb: vcs-compile
+	cd $(buildpath) && ./simv -ucli -do "../sim_ita_tb.tcl"

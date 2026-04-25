@@ -12,12 +12,23 @@ BENDER_INSTALL_DIR    = ${INSTALL_DIR}/bender
 VENV_BIN=venv/bin/
 
 BENDER_VERSION = 0.28.1
-SIM_PATH   ?= modelsim/build
+SIM_PATH   ?= vcs/build
 SYNTH_PATH  = synopsys
+
+# Default simulator: vcs
+SIM_TOOL   ?= vcs
 
 BENDER_TARGETS = -t rtl -t test
 
 target ?= run
+
+# VCS Settings
+VCS_HOME       ?= /package/eda2/synopsys/vcs/X-2025.06-SP2-2
+VERDI_HOME     ?= /package/eda2/synopsys/verdi/X-2025.06-SP2-2
+VCS_INC_DIR    ?= +incdir+src/tb+src
+VCS_DEFINES    ?= $(vlog_defs)
+VCS_SV_FLAGS   ?= -sverilog -timescale=1ns/1ps -vpi
+VCS_COMPILE_LOG ?= vcs_compile.log
 
 no_stalls ?= 0
 single_attention ?= 0
@@ -57,14 +68,21 @@ clean-sim:
 	rm -rf $(SIM_PATH)/transcript
 	rm -rf $(SIM_PATH)/modelsim.ini
 	rm -rf $(SIM_PATH)/vsim.wlf
+	rm -rf $(SIM_PATH)/simv*
+	rm -rf $(SIM_PATH)/AN.DB
+	rm -rf $(SIM_PATH)/csrc
+	rm -rf $(SIM_PATH)/*.log
+	rm -rf $(SIM_PATH)/inter.vpd
+	rm -rf $(SIM_PATH)/vc_hdrs.h
+	rm -rf $(SIM_PATH)/.vcs*
 
 compile: clean-sim
 	mkdir -p $(SIM_PATH)
-	$(BENDER_INSTALL_DIR)/bender script vsim $(BENDER_TARGETS) $(vlog_defs) --vlog-arg="$(VLOG_FLAGS)" >> $(SIM_PATH)/compile.tcl
-	cd modelsim && \
+	$(BENDER_INSTALL_DIR)/bender script $(SIM_TOOL) $(BENDER_TARGETS) $(vlog_defs) --vlog-arg="$(VLOG_FLAGS)" >> $(SIM_PATH)/compile.tcl
+	cd $(SIM_TOOL) && \
 	$(MAKE) compile buildpath=$(ROOT_DIR)/$(SIM_PATH)
 run: 
-	cd modelsim && \
+	cd $(SIM_TOOL) && \
 	$(MAKE) $(target) buildpath=$(ROOT_DIR)/$(SIM_PATH)
 
 synopsys-script:
