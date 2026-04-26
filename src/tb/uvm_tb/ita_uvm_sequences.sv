@@ -112,7 +112,7 @@ class mem_base_write_seq extends uvm_sequence#(axi_lite_txn);
   task body();
 	  `uvm_info("SEQ", "Starting seq...", UVM_MEDIUM)
     // Write input base address (register 12)
-    `uvm_do_with(req, {req.addr == mem_cfg.input_base; req.data == input_data; req.write == 1'b1;})
+    `uvm_do_with(req, {req.addr == mem_cfg.input_base; req.data == mem_cfg.input_base; req.write == 1'b1;})
     // Write weight base address (register 13)
     `uvm_do_with(req, {req.addr == 32'h34; req.data == mem_cfg.weight_base; req.write == 1'b1;})
     // Write bias base address (register 14)
