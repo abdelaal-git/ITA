@@ -79,9 +79,7 @@ class ctrl_reg_write_seq extends uvm_sequence#(axi_lite_txn);
     ctrl_bit_width = $bits(ctrl_t);
     num_words      = (ctrl_bit_width + 31) / 32;
 
-    // Use a wide enough vector (works in all simulators)
-    flat = '0;          // Safe max width (1024 bits)
-    flat[ctrl_bit_width-1:0] = ctrl;   // Truncate to actual size
+    flat = ctrl;   // Truncate to actual size
 
     `uvm_info("CTRL_SEQ", $sformatf("Writing %0d words (%0d bits) | S=%0d P=%0d E=%0d M=%0d F=%0d", 
               num_words, ctrl_bit_width, cfg.S, cfg.P, cfg.E, cfg.M, cfg.F), UVM_MEDIUM)
@@ -114,7 +112,7 @@ class mem_base_write_seq extends uvm_sequence#(axi_lite_txn);
   task body();
 	  `uvm_info("SEQ", "Starting seq...", UVM_MEDIUM)
     // Write input base address (register 12)
-    `uvm_do_with(req, {req.addr == 32'h30; req.data == mem_cfg.input_base; req.write == 1'b1;})
+    `uvm_do_with(req, {req.addr == mem_cfg.input_base; req.data == input_data; req.write == 1'b1;})
     // Write weight base address (register 13)
     `uvm_do_with(req, {req.addr == 32'h34; req.data == mem_cfg.weight_base; req.write == 1'b1;})
     // Write bias base address (register 14)
@@ -217,13 +215,12 @@ class ita_test_seq extends uvm_sequence#(axi_lite_txn);
     if (!uvm_config_db#(ita_config)::get(null, get_full_name(), "cfg", cfg))
       `uvm_fatal("SEQ", "Configuration not found")
 
+    load_test_data();
     // Backdoor writes
     backdoor_write_data_to_memory("ita_uvm_tb.i_axi_memory.mem", cfg.mem_cfg.input_base,  input_data);
     backdoor_write_data_to_memory("ita_uvm_tb.i_axi_memory.mem", cfg.mem_cfg.weight_base, weight_data);
     backdoor_write_data_to_memory("ita_uvm_tb.i_axi_memory.mem", cfg.mem_cfg.bias_base,   bias_data);    
     `uvm_info("SEQ", "Memory is initialized", UVM_MEDIUM)
-
-    load_test_data();
 
     // Configure control registers
     ctrl_seq = ctrl_reg_write_seq::type_id::create("ctrl_seq");

@@ -46,6 +46,9 @@ class ita_config extends uvm_object;
 
     // F via plusarg
     if ($value$plusargs("F=%d", s)) F = s.atoi();
+    else F = 64;
+    
+    mem_cfg.calculate_addresses(S, E, P, H, F);
 
     `uvm_info("CONFIG", $sformatf("DUT params → N=%0d M=%0d S=%0d P=%0d E=%0d H=%0d F=%0d WI=%0d WO=%0d",
               N,M,S,P,E,H,F,WI,WO), UVM_LOW)
