@@ -172,12 +172,14 @@ class ita_test_seq extends uvm_sequence#(axi_lite_txn);
   logic [31:0] weight_data[];
   logic [31:0] bias_data[];
   logic [31:0] expected_output[];
+  logic [31:0] act_output_data[];
 
   function new(string name = "ita_test_seq");
     super.new(name);
   endfunction
 
   task body();
+    
     `uvm_info("SEQ", "Starting test_seq...", UVM_MEDIUM)
     // Get configuration
     if (!uvm_config_db#(ita_config)::get(null, get_full_name(), "cfg", cfg))
@@ -212,8 +214,8 @@ class ita_test_seq extends uvm_sequence#(axi_lite_txn);
     // Wait for completion (simplified)
     #1000ns;
 
-    // Read output data from memory
-    //read_data_from_memory(cfg.mem_cfg.output_base, expected_output.size());//FIXME this needs to be backdoor since the memory's master is currently only DUT
+    // Read output data from memory (backdoor)
+    backdoor_read_data_from_memory("ita_uvm_tb.i_axi_memory.mem", cfg.mem_cfg.output_base, expected_output.size(), act_output_data);
 
     // Verify results
     verify_results();
@@ -229,6 +231,24 @@ class ita_test_seq extends uvm_sequence#(axi_lite_txn);
       hdl_path = {mem_path, "[", word_addr, "]"};
       if (!uvm_hdl_deposit(hdl_path, data[i])) begin
         `uvm_error("BACKDOOR", $sformatf("Failed to deposit to %s", hdl_path))
+      end
+    end
+  endtask
+
+  // Backdoor memory read using uvm_hdl_read
+  task backdoor_read_data_from_memory(string mem_path, bit [31:0] base_addr, int unsigned size, ref logic [31:0] data[]);
+    string hdl_path;
+    int unsigned word_addr;
+    uvm_hdl_data_t tmp;
+    data = new[size];
+    for (int i = 0; i < size; i++) begin
+      word_addr = (base_addr >> 2) + i;
+      hdl_path = {mem_path, "[", word_addr, "]"};
+      if (!uvm_hdl_read(hdl_path, tmp)) begin
+        `uvm_error("BACKDOOR", $sformatf("Failed to read from %s", hdl_path))
+        data[i] = 'x;
+      end else begin
+        data[i] = tmp;
       end
     end
   endtask
@@ -280,9 +300,22 @@ class ita_test_seq extends uvm_sequence#(axi_lite_txn);
   endfunction
 
   task verify_results();
-    // Compare read data with expected output
-    // This is simplified - real implementation would do detailed checking
-    `uvm_info("SEQ", "Results verification completed", UVM_MEDIUM)
+    int errors = 0;
+    if (act_output_data.size() != expected_output.size()) begin
+      `uvm_error("VERIFY", $sformatf("Output size mismatch: got %0d, expected %0d", act_output_data.size(), expected_output.size()))
+      errors++;
+    end else begin
+      for (int i = 0; i < act_output_data.size(); i++) begin
+        if (act_output_data[i] !== expected_output[i]) begin
+          `uvm_error("VERIFY", $sformatf("Mismatch at index %0d: got 0x%08x, expected 0x%08x", i, act_output_data[i], expected_output[i]))
+          errors++;
+        end
+      end
+    end
+    if (errors == 0)
+      `uvm_info("VERIFY", "All output values match expected results", UVM_MEDIUM)
+    else
+      `uvm_info("VERIFY", $sformatf("Verification completed with %0d errors", errors), UVM_MEDIUM)
   endtask
 
 endclass : ita_test_seq
