@@ -193,6 +193,12 @@ class ita_test_seq extends uvm_sequence#(axi_lite_txn);
     if (!uvm_config_db#(ita_config)::get(null, get_full_name(), "cfg", cfg))
       `uvm_fatal("SEQ", "Configuration not found")
 
+    // Backdoor writes
+    backdoor_write_data_to_memory("ita_uvm_tb.i_axi_memory.mem", cfg.mem_cfg.input_base,  input_data);
+    backdoor_write_data_to_memory("ita_uvm_tb.i_axi_memory.mem", cfg.mem_cfg.weight_base, weight_data);
+    backdoor_write_data_to_memory("ita_uvm_tb.i_axi_memory.mem", cfg.mem_cfg.bias_base,   bias_data);    
+    `uvm_info("SEQ", "Memory is initialized", UVM_MEDIUM)
+
     load_test_data();
 
     // Configure control registers
@@ -204,11 +210,6 @@ class ita_test_seq extends uvm_sequence#(axi_lite_txn);
     mem_seq = mem_base_write_seq::type_id::create("mem_seq");
     mem_seq.mem_cfg = cfg.mem_cfg;
     mem_seq.start(m_sequencer);
-
-    // Backdoor writes
-    backdoor_write_data_to_memory("ita_uvm_tb.i_axi_memory.mem", cfg.mem_cfg.input_base,  input_data);
-    backdoor_write_data_to_memory("ita_uvm_tb.i_axi_memory.mem", cfg.mem_cfg.weight_base, weight_data);
-    backdoor_write_data_to_memory("ita_uvm_tb.i_axi_memory.mem", cfg.mem_cfg.bias_base,   bias_data);
 
     start_ita_computation();
 
@@ -277,6 +278,8 @@ class ita_test_seq extends uvm_sequence#(axi_lite_txn);
 
   `uvm_info("SEQ", $sformatf("Golden model run — expected output size = %0d", 
             expected_output.size()), UVM_MEDIUM)
+	    `uvm_info("SEQ", $sformatf("Golden model run — expected output = %0p", 
+            expected_output), UVM_MEDIUM)
 endtask
 
   // Backdoor memory initialization using uvm_hdl_deposit

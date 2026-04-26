@@ -4,7 +4,7 @@
 module axi_memory
   import ita_package::*;
 #(
-  parameter int unsigned MEM_SIZE = 1024*1024, // 1MB
+  parameter int unsigned MEM_SIZE = 4*1024*1024, // 1MB
   parameter int unsigned BASE_ADDR = 0
 )(
   input  logic         clk_i,
