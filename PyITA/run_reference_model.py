@@ -1,5 +1,8 @@
 import numpy as np
-from .ITA import Transformer
+try:
+    from .ITA import Transformer
+except ImportError:
+    from ITA import Transformer   # fallback
 
 def run_reference_model(input_data, weight_data, bias_data,
                         S=64, P=64, E=64, F=64, H=1,

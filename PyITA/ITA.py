@@ -20,7 +20,13 @@ from functools import partial
 from typing import Union
 
 import numpy as np
-from numpy.typing import ArrayLike, DTypeLike
+try:
+    from numpy.typing import ArrayLike, DTypeLike
+except ImportError:
+    # Fallback for old NumPy (Python 3.6)
+    ArrayLike = 'ArrayLike'
+    DTypeLike = 'DTypeLike'
+    print("Using fallback numpy.typing (old NumPy detected)")
 
 from .softmax import fastSoftmax, realSoftmax, streamingPartialSoftmax
 from .gelu import gelu_requantize, i_gelu_requantized, get_i_gelu_constants, get_i_gelu_requantized_constants
