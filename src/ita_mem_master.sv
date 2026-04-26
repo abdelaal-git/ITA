@@ -56,7 +56,8 @@ module ita_mem_master
 
   input  logic         output_valid_i,
   output logic         output_ready_o,
-  input  fifo_data_t   output_data_i
+  input  fifo_data_t   output_data_i,
+  input  logic         fetch_next_i,     // ← NEW: pulse/high when controller needs next set
 );
 
   localparam int unsigned INP_BITS     = M * WI;
@@ -150,7 +151,7 @@ module ita_mem_master
         m_axi_awvalid = 1'b1;
         m_axi_awlen = OUT_WORDS - 1;
         m_axi_awaddr = mem_output_base_addr_i + out_addr_q;
-      end else if (!inp_valid_q) begin
+        end else if (fetch_next_i && !inp_valid_q) begin
         state_d = READ_ADDR;
         cmd_d = READ_INP;
         addr_d = mem_input_base_addr_i + inp_addr_q;
@@ -158,7 +159,7 @@ module ita_mem_master
         m_axi_arvalid = 1'b1;
         m_axi_arlen = INP_WORDS - 1;
         m_axi_araddr = mem_input_base_addr_i + inp_addr_q;
-      end else if (!bias_valid_q) begin
+      end else if (fetch_next_i && !bias_valid_q) begin
         state_d = READ_ADDR;
         cmd_d = READ_BIAS;
         addr_d = mem_bias_base_addr_i + bias_addr_q;
@@ -166,7 +167,7 @@ module ita_mem_master
         m_axi_arvalid = 1'b1;
         m_axi_arlen = BIAS_WORDS - 1;
         m_axi_araddr = mem_bias_base_addr_i + bias_addr_q;
-      end else if (!weight_valid_q) begin
+      end else if (fetch_next_i && !weight_valid_q) begin
         state_d = READ_ADDR;
         cmd_d = READ_WEIGHT;
         addr_d = mem_weight_base_addr_i + weight_addr_q;
@@ -174,7 +175,6 @@ module ita_mem_master
         m_axi_arvalid = 1'b1;
         m_axi_arlen = WEIGHT_WORDS - 1;
         m_axi_araddr = mem_weight_base_addr_i + weight_addr_q;
-      end
     end else begin
       case (state_q)
         WRITE_ADDR: begin
