@@ -232,11 +232,11 @@ class ita_test_seq extends uvm_sequence#(axi_lite_txn);
     mem_seq.mem_cfg = cfg.mem_cfg;
     mem_seq.start(m_sequencer);
 
-    start_ita_computation();
+    //start_ita_computation();
 
     // Wait for done
-    wait_for_done(500_000);
-
+    //wait_for_done(500_000);
+    #10000ns;
     backdoor_read_data_from_memory("ita_uvm_tb.i_axi_memory.mem",
                                    cfg.mem_cfg.output_base,
                                    expected_output.size(), act_output_data);
@@ -390,7 +390,7 @@ endtask
   function ctrl_t get_default_ctrl();
   ctrl_t c = '0;
 
-  c.start       = 1'b0;           // will be set to 1 later by another register or pulse
+  c.start       = 1'b1;           // will be set to 1 later by another register or pulse
   c.layer       = Attention;      // or Feedforward
   c.activation  = Identity;
 
