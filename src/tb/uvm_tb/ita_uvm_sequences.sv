@@ -68,6 +68,10 @@ class ctrl_reg_write_seq extends uvm_sequence#(axi_lite_txn);
   endfunction
 
   task body();
+    int unsigned ctrl_bit_width;
+    int unsigned num_words;
+    logic [1023:0] flat;
+
     if (!uvm_config_db#(ita_config)::get(null, get_full_name(), "cfg", cfg))
       `uvm_fatal("CTRL_SEQ", "ita_config not found")
 
@@ -75,11 +79,11 @@ class ctrl_reg_write_seq extends uvm_sequence#(axi_lite_txn);
     ctrl = get_default_ctrl();
 
     // === Dynamic width handling (no hardcoded 384) ===
-    int unsigned ctrl_bit_width = $bits(ctrl_t);
-    int unsigned num_words      = (ctrl_bit_width + 31) / 32;
+    ctrl_bit_width = $bits(ctrl_t);
+    num_words      = (ctrl_bit_width + 31) / 32;
 
     // Use a wide enough vector (works in all simulators)
-    logic [1023:0] flat = '0;          // Safe max width (1024 bits)
+    flat = '0;          // Safe max width (1024 bits)
     flat[ctrl_bit_width-1:0] = ctrl;   // Truncate to actual size
 
     `uvm_info("CTRL_SEQ", $sformatf("Writing %0d words (%0d bits) | S=%0d P=%0d E=%0d M=%0d F=%0d", 
