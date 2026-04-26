@@ -156,12 +156,13 @@ endclass : axi4_read_seq
 
 // Updated DPI import (place after other imports)
 import "DPI-C" context function void ita_reference_model(
-    input int input_data[],  input int input_size,
-    input int weight_data[], input int weight_size,
-    input int bias_data[],   input int bias_size,
+    input logic[31:0] input_data[],  input int input_size,
+    input logic[31:0] weight_data[], input int weight_size,
+    input logic[31:0] bias_data[],   input int bias_size,
     input int S, input int P, input int E, input int F, input int H,
     input int N, input int M, input int WI, input int WO,
-    output int output_data[], input int output_size);
+    output logic[31:0] output_data[], input int output_size);
+
 
 // ===================================================================
 // Main test sequence
@@ -234,6 +235,7 @@ class ita_test_seq extends uvm_sequence#(axi_lite_txn);
   int unsigned N = cfg.N;
   int unsigned M = cfg.M;
   int unsigned WI = cfg.WI;
+  int unsigned WO = cfg.WO;
 
   // -------------------------------------------------
   // Array allocation — realistic sizes
@@ -269,7 +271,7 @@ class ita_test_seq extends uvm_sequence#(axi_lite_txn);
       input_data,   input_data.size(),
       weight_data,  weight_data.size(),
       bias_data,    bias_data.size(),
-      S, P, E, F, H, N, M, WI, cfg.WO,
+      S, P, E, F, H, N, M, WI, WO,
       expected_output, expected_output.size()
   );
 
@@ -283,7 +285,7 @@ endtask
     int unsigned word_addr;
     for (int i = 0; i < data.size(); i++) begin
       word_addr = (base_addr >> 2) + i;
-      hdl_path = {mem_path, "[", word_addr, "]"};
+      hdl_path = {mem_path, "[", $sformatf("%0d", word_addr), "]"};
       if (!uvm_hdl_deposit(hdl_path, data[i])) begin
         `uvm_error("BACKDOOR", $sformatf("Failed to deposit to %s", hdl_path))
       end
@@ -298,7 +300,7 @@ endtask
     data = new[size];
     for (int i = 0; i < size; i++) begin
       word_addr = (base_addr >> 2) + i;
-      hdl_path = {mem_path, "[", word_addr, "]"};
+      hdl_path = {mem_path, "[", $sformatf("%0d", word_addr), "]"};
       if (!uvm_hdl_read(hdl_path, tmp)) begin
         `uvm_error("BACKDOOR", $sformatf("Failed to read from %s", hdl_path))
         data[i] = 'x;
@@ -306,20 +308,6 @@ endtask
         data[i] = tmp;
       end
     end
-  endtask
-
-  task write_data_to_memory(bit [31:0] base_addr, logic [31:0] data[]);
-    mem_write_seq = axi4_write_seq::type_id::create("mem_write_seq");
-    mem_write_seq.addr = base_addr;
-    mem_write_seq.data = data;
-    mem_write_seq.start(m_sequencer);
-  endtask
-
-  task read_data_from_memory(bit [31:0] base_addr, int unsigned size);
-    mem_read_seq = axi4_read_seq::type_id::create("mem_read_seq");
-    mem_read_seq.addr = base_addr;
-    mem_read_seq.len = size - 1;
-    mem_read_seq.start(m_sequencer);
   endtask
 
   task start_ita_computation();

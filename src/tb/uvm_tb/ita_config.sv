@@ -32,6 +32,7 @@ class ita_config extends uvm_object;
 
   // -------------------------------------------------------------------------
   function new(string name = "ita_config");
+    string s;
     super.new(name);
     mem_cfg = mem_base_config::type_id::create("mem_cfg");
 
@@ -44,7 +45,6 @@ class ita_config extends uvm_object;
     H = ita_package::H;
 
     // F via plusarg
-    string s;
     if ($value$plusargs("F=%d", s)) F = s.atoi();
 
     `uvm_info("CONFIG", $sformatf("DUT params → N=%0d M=%0d S=%0d P=%0d E=%0d H=%0d F=%0d WI=%0d WO=%0d",
