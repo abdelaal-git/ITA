@@ -77,13 +77,27 @@ void ita_reference_model(
     PyObject* result = PyObject_CallObject(pFunc, args);
 
     // Copy result back
+    if (result == NULL) {
+        PyErr_Print();
+        printf("ERROR: Python run_reference_model() returned NULL!\n");
+        Py_DECREF(pFunc); Py_DECREF(pModule);
+        return;
+    }
     if (result) {
         PyArrayObject* np_res = (PyArrayObject*)result;
-        int* res_ptr = (int*)PyArray_DATA(np_res);
-        int len = PyArray_DIM(np_res, 0);
-        for (int i = 0; i < output_size && i < len; i++) {
-            output_data[i].aval = res_ptr[i];
-            output_data[i].bval = 0;
+        int res_len = PyArray_DIM(np_res, 0);
+        int* res_data = (int*)PyArray_DATA(np_res);
+
+        printf("Golden model returned %d values. First 8: ", res_len);
+        for (int i = 0; i < 8 && i < res_len; i++) {
+            printf("%d ", res_data[i]);
+        }
+        printf("\n");
+
+        // Copy back to SV
+        for (int i = 0; i < output_size && i < res_len; i++) {
+            output_data[i].aval = res_data[i];
+            output_data[i].bval = 0;        // important: clear X/Z
         }
         Py_DECREF(result);
     }
