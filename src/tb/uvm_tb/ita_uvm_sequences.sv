@@ -400,7 +400,7 @@ endtask
   `uvm_info("CTRL", $sformatf("Default ctrl: tile_s=%0d tile_e=%0d tile_p=%0d tile_f=%0d", 
             c.tile_s, c.tile_e, c.tile_p, c.tile_f), UVM_MEDIUM)
 
-  return ctrl;
+  return c;
 endfunction
 
   // ===================================================================
