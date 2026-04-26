@@ -196,14 +196,27 @@ class ita_test_seq extends uvm_sequence#(axi_lite_txn);
     mem_seq.mem_cfg = cfg.mem_cfg;
     mem_seq.start(m_sequencer);
 
-    // Write input data to memory
-    //write_data_to_memory(cfg.mem_cfg.input_base, input_data); //FIXME this needs to be backdoor since the memory's master is currently only DUT
 
-    // Write weight data to memory
-    //write_data_to_memory(cfg.mem_cfg.weight_base, weight_data);//FIXME this needs to be backdoor since the memory's master is currently only DUT
+    // Write input data to memory (backdoor)
+    backdoor_write_data_to_memory("ita_uvm_tb.i_axi_memory.mem", cfg.mem_cfg.input_base, input_data);
 
-    // Write bias data to memory
-    //write_data_to_memory(cfg.mem_cfg.bias_base, bias_data);//FIXME this needs to be backdoor since the memory's master is currently only DUT
+    // Write weight data to memory (backdoor)
+    backdoor_write_data_to_memory("ita_uvm_tb.i_axi_memory.mem", cfg.mem_cfg.weight_base, weight_data);
+
+    // Write bias data to memory (backdoor)
+    backdoor_write_data_to_memory("ita_uvm_tb.i_axi_memory.mem", cfg.mem_cfg.bias_base, bias_data);
+  // Backdoor memory initialization using uvm_hdl_deposit
+  task backdoor_write_data_to_memory(string mem_path, bit [31:0] base_addr, logic [31:0] data[]);
+    string hdl_path;
+    int unsigned word_addr;
+    for (int i = 0; i < data.size(); i++) begin
+      word_addr = (base_addr >> 2) + i;
+      hdl_path = {mem_path, "[", word_addr, "]"};
+      if (!uvm_hdl_deposit(hdl_path, data[i])) begin
+        `uvm_error("BACKDOOR", $sformatf("Failed to deposit to %s", hdl_path))
+      end
+    end
+  endtask
 
     // Start ITA computation
     start_ita_computation();
