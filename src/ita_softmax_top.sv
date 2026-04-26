@@ -73,7 +73,11 @@ module ita_softmax_top
     .WriteData  (write_max_data)
   );
 
+  `ifdef LUT_SOFTMAX
+  ita_softmax_lut i_softmax (
+  `else
   ita_softmax i_softmax (
+  `endif
     .clk_i                (clk_i                ),
     .rst_ni               (rst_ni               ),
     .ctrl_i               (ctrl_i               ),
