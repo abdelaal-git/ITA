@@ -37,10 +37,9 @@ def run_reference_model(input_data, weight_data, bias_data,
 
         # Simple placeholder: return input data for now (you can improve later)
         # This helps us confirm DPI is working before fixing full model
-        golden = (input_arr * 2).flatten().astype(np.int32)   # dummy computation
-
-        print(f"[Python] Golden model SUCCESS: returning {len(golden)} values")
-        return golden.tolist()
+        golden = model.Out_soft_sum_requant[:, :S, :E].flatten().astype(np.int32)
+        print(f"[Python Golden] SUCCESS: returning {len(golden)} values")
+        return golden.tolist()        # return list is fine
 
     except Exception as e:
         print(f"[Python] ERROR in golden model: {e}")

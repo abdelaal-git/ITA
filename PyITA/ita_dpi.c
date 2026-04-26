@@ -62,27 +62,42 @@ extern "C" void ita_reference_model(
                                   PyLong_FromLong(M), PyLong_FromLong(WI),
                                   PyLong_FromLong(WO));
 
-    PyObject* result = PyObject_CallObject(pFunc, args);
+        PyObject* result = PyObject_CallObject(pFunc, args);
 
-    // === CRITICAL: Safe handling ===
     if (result == NULL) {
         PyErr_Print();
         printf("ERROR: Python function returned NULL\n");
     } 
-    else if (!PyArray_Check(result)) {
-        printf("ERROR: Python did not return a NumPy array! Got type %s\n", Py_TYPE(result)->tp_name);
-        Py_DECREF(result);
-    } 
     else {
-        PyArrayObject* np_res = (PyArrayObject*)result;
-        int res_len = PyArray_DIM(np_res, 0);
-        int* res_data = (int*)PyArray_DATA(np_res);
+        int* res_data = NULL;
+        int res_len = 0;
 
-        printf("Golden model SUCCESS: returned %d values\n", res_len);
+        // Handle both list and NumPy array
+        if (PyList_Check(result)) {
+            res_len = PyList_Size(result);
+            printf("Golden model SUCCESS: returned Python list with %d values\n", res_len);
+            res_data = (int*)malloc(res_len * sizeof(int));
+            for (int i = 0; i < res_len; i++) {
+                res_data[i] = PyLong_AsLong(PyList_GetItem(result, i));
+            }
+        }
+        else if (PyArray_Check(result)) {
+            PyArrayObject* np_res = (PyArrayObject*)result;
+            res_len = PyArray_DIM(np_res, 0);
+            res_data = (int*)PyArray_DATA(np_res);
+            printf("Golden model SUCCESS: returned NumPy array with %d values\n", res_len);
+        }
+        else {
+            printf("ERROR: Python returned unknown type: %s\n", Py_TYPE(result)->tp_name);
+        }
 
-        for (int i = 0; i < output_size && i < res_len; i++) {
-            output_data[i].aval = res_data[i];
-            output_data[i].bval = 0;
+        // Copy to SV
+        if (res_data) {
+            for (int i = 0; i < output_size && i < res_len; i++) {
+                output_data[i].aval = res_data[i];
+                output_data[i].bval = 0;
+            }
+            if (PyList_Check(result)) free(res_data);   // only free if we allocated
         }
     }
 
