@@ -154,6 +154,15 @@ class axi4_read_seq extends uvm_sequence#(axi4_txn);
 
 endclass : axi4_read_seq
 
+import "DPI-C" context function void ita_reference_model(
+  input int input_data[],
+  input int weight_data[],
+  input int bias_data[],
+    input int S,
+    input int P,
+    input int E,
+    input int F,
+    input int H,
 // Main ITA test sequence
 class ita_test_seq extends uvm_sequence#(axi_lite_txn);
   `uvm_object_utils(ita_test_seq)
@@ -273,16 +282,23 @@ class ita_test_seq extends uvm_sequence#(axi_lite_txn);
   endtask
 
   task load_test_data();
-    // Simplified - load some test data
-    input_data = new[10];
-    weight_data = new[20];
-    bias_data = new[5];
-    expected_output = new[8];
+    // Example sizes (should match Python reference model)
+    int S = 10;
+    int P = 20;
+    int E = 10;
+    int F = 8;
+    int H = 1;
+    input_data = new[S*E];
+    weight_data = new[E*P];
+    bias_data = new[P];
+    expected_output = new[S*P];
 
-    foreach (input_data[i]) input_data[i] = $random;
-    foreach (weight_data[i]) weight_data[i] = $random;
-    foreach (bias_data[i]) bias_data[i] = $random;
-    foreach (expected_output[i]) expected_output[i] = $random;
+    foreach (input_data[i]) input_data[i] = $urandom_range(-128,127);
+    foreach (weight_data[i]) weight_data[i] = $urandom_range(-128,127);
+    foreach (bias_data[i]) bias_data[i] = $urandom_range(-128,127);
+
+    // Call DPI-C reference model to get expected output
+    ita_reference_model(input_data, weight_data, bias_data, input_data.size(), weight_data.size(), bias_data.size(), expected_output, expected_output.size());
   endtask
 
   function ctrl_t get_default_ctrl();
