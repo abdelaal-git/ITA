@@ -19,7 +19,7 @@ VERDI          := $(VERDI_HOME)/bin/verdi
 # ============================
 # DPI Settings (NEW)
 # ============================
-DPI_DIR        := ../PyITA
+DPI_DIR        := /home/ecegridfs/a/ee604p07/ITA/PyITA
 DPI_C          := $(DPI_DIR)/ita_dpi.c
 DPI_SO         := $(DPI_DIR)/ita_dpi.so
 
@@ -41,9 +41,11 @@ dpi:
 	@echo "=== Building ITA DPI shared library ==="
 	cd $(DPI_DIR) && \
 	gcc -shared -fPIC -o ita_dpi.so ita_dpi.c \
-		$(shell python3-config --includes) \
+		-I/usr/include/python3.6m \
+		-I/usr/lib64/python3.6/site-packages/numpy/core/include \
 		-DNPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION \
-		-I$(VCS_HOME)/include
+		-I$(VCS_HOME)/include \
+		-lpython3.6m
 	@echo "DPI library built: $(DPI_SO)"
 
 # ============================
