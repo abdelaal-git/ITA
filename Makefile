@@ -27,6 +27,7 @@ VCS_HOME       := /package/eda2/synopsys/vcs/X-2025.06-SP2-2
 VERDI_HOME     := /package/eda2/synopsys/verdi/X-2025.06-SP2-2
 VCS_INC_DIR    ?= +incdir+src/tb+src
 VCS_DEFINES    ?= $(vlog_defs)
+EXTRA_DEFINES  ?= ""
 VCS_SV_FLAGS   ?= -sverilog -timescale=1ns/1ps -vpi -full64
 VCS_COMPILE_LOG ?= vcs_compile.log
 
@@ -45,14 +46,14 @@ else ifeq ($(activation), relu)
 else
 	activation_int = 0
 endif
-vlog_defs += -DNO_STALLS=$(no_stalls) -DSINGLE_ATTENTION=$(single_attention) -DSEQ_LENGTH=$(s) -DEMBED_SIZE=$(e) -DPROJ_SPACE=$(p) -DFF_SIZE=$(f) -DBIAS=$(bias) -DACTIVATION=$(activation_int)
+vlog_defs += -DNO_STALLS=$(no_stalls) -DSINGLE_ATTENTION=$(single_attention) -DSEQ_LENGTH=$(s) -DEMBED_SIZE=$(e) -DPROJ_SPACE=$(p) -DFF_SIZE=$(f) -DBIAS=$(bias) -DACTIVATION=$(activation_int) 
 
 ifeq ($(target), sim_ita_hwpe_tb)
 	BENDER_TARGETS += -t ita_hwpe -t ita_hwpe_test
 	vlog_defs += -DHCI_ASSERT_DELAY=\#41ps
 endif
 
-VLOG_FLAGS += -override_timescale=1ns/1ps -ntb_opts uvm -debug_access+all -CFLAGS uvm_dpi.o -kdb
+VLOG_FLAGS += -override_timescale=1ns/1ps -ntb_opts uvm -debug_access+all -CFLAGS uvm_dpi.o -kdb $(EXTRA_DEFINES)
 
 
 # Environment variables for UVM

@@ -44,6 +44,7 @@ sources:
   - src/ita_requantizer.sv
   - src/ita_serdiv.sv
   - src/ita_softmax.sv
+  - src/ita_softmax_lut.sv
   - src/ita_softmax_top.sv
   - src/ita_sumdotp.sv
   - src/ita_weight_controller.sv

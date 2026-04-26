@@ -302,10 +302,10 @@ class ita_test_seq extends uvm_sequence#(axi_lite_txn);
         bias_data[i]   = $signed($urandom_range(-(2**(WI-1)), 2**(WI-1)-1));
 
     // === Cast to int for DPI (most stable with VCS) ===
-    input_int[]   = new[input_data.size()];
-    weight_int[]  = new[weight_data.size()];
-    bias_int[]    = new[bias_data.size()];
-    golden_int[]  = new[expected_output.size()];
+    input_int   = new[input_data.size()];
+    weight_int  = new[weight_data.size()];
+    bias_int    = new[bias_data.size()];
+    golden_int  = new[expected_output.size()];
 
     foreach (input_data[i])   input_int[i]  = input_data[i];
     foreach (weight_data[i])  weight_int[i]  = weight_data[i];
