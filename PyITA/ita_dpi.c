@@ -2,11 +2,28 @@
 #include <Python.h>
 #include <numpy/arrayobject.h>
 #include <stdio.h>
+// Use proper C linkage (no "C++" extern syntax)
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void ita_reference_model(
+    const svLogicVecVal* input_data,  int input_size,
+    const svLogicVecVal* weight_data, int weight_size,
+    const svLogicVecVal* bias_data,   int bias_size,
+    int S, int P, int E, int F, int H,
+    int N, int M, int WI, int WO,
+    svLogicVecVal* output_data, int output_size);
+
+#ifdef __cplusplus
+}
+#endif
+
 
 // ===================================================================
 // ITA Golden Model DPI-C Wrapper
 // ===================================================================
-extern "C" void ita_reference_model(
+void ita_reference_model(
     const svLogicVecVal* input_data,  int input_size,
     const svLogicVecVal* weight_data, int weight_size,
     const svLogicVecVal* bias_data,   int bias_size,
