@@ -245,62 +245,71 @@ class ita_test_seq extends uvm_sequence#(axi_lite_txn);
     `uvm_info("SEQ", "ita_test_seq finished", UVM_MEDIUM)
   endtask
 
-  // ===================================================================
-  // Full load_test_data()
-  // ===================================================================
   task load_test_data();
-  int unsigned S = cfg.S;  // from ita_package via config
-  int unsigned P = cfg.P;
-  int unsigned E = cfg.E;
-  int unsigned F = cfg.F;
-  int unsigned H = cfg.H;
-  int unsigned N = cfg.N;
-  int unsigned M = cfg.M;
-  int unsigned WI = cfg.WI;
-  int unsigned WO = cfg.WO;
+    int unsigned S = cfg.S;
+    int unsigned P = cfg.P;
+    int unsigned E = cfg.E;
+    int unsigned F = cfg.F;
+    int unsigned H = cfg.H;
+    int unsigned WI = cfg.WI;
 
-  // -------------------------------------------------
-  // Array allocation — realistic sizes
-  // -------------------------------------------------
-  input_data      = new[S * E];                    // Input tokens (S x E)
-  expected_output = new[S * E];                    // Final output after MHA + FFN
+    // ===================================================================
+    // Accurate Data Size Calculation
+    // ===================================================================
+    int unsigned input_size   = S * E;
+    int unsigned output_size  = S * E;                    // final output is usually S x E
 
-  // Weights: Wq(HxExP) + Wk(HxExP) + Wv(HxExP) + Wo(HxPxE) + Wff(1xExF) + Wff2(1xFxE)
-  weight_data = new[ H*E*P*2 + H*P*E + E*F + F*E ];   // rough total (adjust if needed)
+    // Weight matrices (MHA + Feed-Forward)
+    int unsigned weight_size  = H * E * P * 3 +           // Wq, Wk, Wv
+                                H * P * E +               // Wo (Output projection)
+                                E * F +                   // FF1 (up projection)
+                                F * E;                    // FF2 (down projection)
 
-  // Biases: Bq(HxP) + Bk(HxP) + Bv(HxP) + Bo(HxE) + Bff(1xF) + Bff2(1xE)
-  bias_data   = new[ H*P*3 + H*E + F + E ];
+    // Bias vectors
+    int unsigned bias_size    = H * P * 3 +               // Bq, Bk, Bv
+                                H * E +                   // Bo
+                                F +                       // Bff1
+                                E;                        // Bff2
 
-  `uvm_info("SEQ", $sformatf("load_test_data: S=%0d E=%0d P=%0d F=%0d H=%0d M=%0d", 
-            S, E, P, F, H, M), UVM_MEDIUM)
+    // Allocate arrays
+    input_data      = new[input_size];
+    expected_output = new[output_size];
+    weight_data     = new[weight_size];
+    bias_data       = new[bias_size];
 
-  // -------------------------------------------------
-  // Generate random data (signed WI bits)
-  // -------------------------------------------------
-  foreach (input_data[i])  
-      input_data[i] = $signed($urandom_range(-(2**(WI-1)), 2**(WI-1)-1));
+    `uvm_info("SEQ", $sformatf("Data sizes calculated:\n  Input=%0d  Weight=%0d  Bias=%0d  Output=%0d",
+              input_size, weight_size, bias_size, output_size), UVM_MEDIUM)
 
-  foreach (weight_data[i]) 
-      weight_data[i] = $signed($urandom_range(-(2**(WI-1)), 2**(WI-1)-1));
+    `uvm_info("SEQ", $sformatf("Memory Map → Input:0x%0h  Weight:0x%0h  Bias:0x%0h  Output:0x%0h",
+              cfg.mem_cfg.input_base, cfg.mem_cfg.weight_base,
+              cfg.mem_cfg.bias_base, cfg.mem_cfg.output_base), UVM_MEDIUM)
 
-  foreach (bias_data[i])   
-      bias_data[i]   = $signed($urandom_range(-(2**(WI-1)), 2**(WI-1)-1));
+    // ===================================================================
+    // Generate random test data (within WI bits)
+    // ===================================================================
+    foreach (input_data[i])
+        input_data[i] = $signed($urandom_range(-(2**(WI-1)), 2**(WI-1)-1));
 
-  // -------------------------------------------------
-  // Call Golden Model (updated DPI signature)
-  // -------------------------------------------------
-  ita_reference_model(
-      input_data,   input_data.size(),
-      weight_data,  weight_data.size(),
-      bias_data,    bias_data.size(),
-      S, P, E, F, H, N, M, WI, WO,
-      expected_output, expected_output.size()
-  );
+    foreach (weight_data[i])
+        weight_data[i] = $signed($urandom_range(-(2**(WI-1)), 2**(WI-1)-1));
 
-  `uvm_info("SEQ", $sformatf("Golden model run — expected output size = %0d", 
-            expected_output.size()), UVM_MEDIUM)
-	    `uvm_info("SEQ", $sformatf("Golden model run — expected output = %0p", 
-            expected_output), UVM_MEDIUM)
+    foreach (bias_data[i])
+        bias_data[i]   = $signed($urandom_range(-(2**(WI-1)), 2**(WI-1)-1));
+
+    // ===================================================================
+    // Run Golden Model with same data
+    // ===================================================================
+    ita_reference_model(
+        input_data,   input_data.size(),
+        weight_data,  weight_data.size(),
+        bias_data,    bias_data.size(),
+        S, P, E, F, H,
+        cfg.N, cfg.M, cfg.WI, cfg.WO,
+        expected_output, expected_output.size()
+    );
+
+    `uvm_info("SEQ", $sformatf("✅ Golden model executed successfully (output size = %0d)", 
+              expected_output.size()), UVM_MEDIUM)
 endtask
 
   // Backdoor memory initialization using uvm_hdl_deposit

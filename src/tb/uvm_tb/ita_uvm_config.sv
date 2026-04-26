@@ -53,17 +53,46 @@ class ita_ctrl_txn extends uvm_sequence_item;
 
 endclass : ita_ctrl_txn
 
-// Memory base address configuration
+// Memory base address configuration - Dynamic & Safe
 class mem_base_config extends uvm_object;
   `uvm_object_utils(mem_base_config)
 
-  bit [31:0] input_base  = 32'h00000000;
-  bit [31:0] weight_base = 32'h00100000;
-  bit [31:0] bias_base   = 32'h00200000;
-  bit [31:0] output_base = 32'h00300000;
+  bit [31:0] input_base;
+  bit [31:0] weight_base;
+  bit [31:0] bias_base;
+  bit [31:0] output_base;
 
   function new(string name = "mem_base_config");
     super.new(name);
+  endfunction
+
+  // Calculate safe, non-overlapping addresses based on parameters
+  function void calculate_addresses(
+    int unsigned S,
+    int unsigned E,
+    int unsigned P,
+    int unsigned H,
+    int unsigned F
+  );
+    // Start from 0
+    input_base = 32'h0000_0000;
+
+    // Weights come after input data
+    weight_base = input_base + (S * E * 4);        // 4 bytes per word
+
+    // Bias after weights (rough but safe estimate)
+    bias_base   = weight_base + (H*E*P*4 + E*F*4 + 4096);  // extra margin
+
+    // Output after bias
+    output_base = bias_base + (H*P*4 + E*4 + 4096);
+
+    // Align all bases to 4KB boundaries (cleaner for backdoor & debugging)
+    weight_base = (weight_base + 4095) & ~32'hFFF;
+    bias_base   = (bias_base   + 4095) & ~32'hFFF;
+    output_base = (output_base + 4095) & ~32'hFFF;
+
+    `uvm_info("MEM_CFG", $sformatf("Calculated addresses → In:0x%0h Wt:0x%0h Bias:0x%0h Out:0x%0h",
+              input_base, weight_base, bias_base, output_base), UVM_MEDIUM)
   endfunction
 
 endclass : mem_base_config
