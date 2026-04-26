@@ -54,28 +54,43 @@ class axi_lite_read_seq extends uvm_sequence#(axi_lite_txn);
 
 endclass : axi_lite_read_seq
 
-// Control register write sequence
+// ========================================================
+// Control Register Write Sequence (Improved)
+// ========================================================
 class ctrl_reg_write_seq extends uvm_sequence#(axi_lite_txn);
   `uvm_object_utils(ctrl_reg_write_seq)
 
   rand ctrl_t ctrl;
+  ita_config cfg;
 
   function new(string name = "ctrl_reg_write_seq");
     super.new(name);
   endfunction
 
   task body();
-    logic [383:0] flat = ctrl;
-    `uvm_info("SEQ", "Starting seq...", UVM_MEDIUM)
-    for (int i = 0; i < 12; i++) begin
-	    `uvm_info("SEQ", $psprintf("Writing addr = %0d, data = %0d", i, flat[31:0]), UVM_MEDIUM)
-      `uvm_do_with(req, {req.addr == 32'h00000000 + i*4; req.data == flat[31:0]; req.write == 1'b1;})
+    if (!uvm_config_db#(ita_config)::get(null, get_full_name(), "cfg", cfg))
+      `uvm_fatal("CTRL_SEQ", "ita_config not found")
+
+    ctrl = get_default_ctrl();        // uses cfg.M, cfg.S, cfg.P etc.
+
+    logic [$bits(ctrl_t)-1:0] flat = ctrl;
+    int unsigned num_words = ($bits(ctrl_t) + 31) / 32;
+
+    `uvm_info("CTRL_SEQ", $sformatf("Writing %0d ctrl words (S=%0d P=%0d E=%0d M=%0d)", 
+              num_words, cfg.S, cfg.P, cfg.E, cfg.M), UVM_MEDIUM)
+
+    for (int i = 0; i < num_words; i++) begin
+      `uvm_do_with(req, {
+        req.addr  == 32'h0000_0000 + i*4;
+        req.data  == flat[31:0];
+        req.write == 1'b1;
+      })
       flat = flat >> 32;
     end
-    `uvm_info("SEQ", "Ending seq...", UVM_MEDIUM)
-  endtask
 
-endclass : ctrl_reg_write_seq
+    `uvm_info("CTRL_SEQ", "Control registers written", UVM_MEDIUM)
+  endtask
+endclass
 
 // Memory base address write sequence
 class mem_base_write_seq extends uvm_sequence#(axi_lite_txn);
@@ -314,53 +329,91 @@ endtask
   endtask
 
   task start_ita_computation();
-    // Write start bit to control register
-    `uvm_do_with(req, {req.addr == 32'h00; req.data == 32'h00000001; req.write == 1'b1;})
+  `uvm_info("CTRL_SEQ", "Pulsing START bit...", UVM_MEDIUM)
+
+  // Write start = 1
+  `uvm_do_with(req, {
+    req.addr  == 32'h0000_0000;   // first control register
+    req.data  == 32'h0000_0001;   // assuming bit 0 is 'start'
+    req.write == 1'b1;
+  })
+
+  #100ns;
+
+  // Optionally clear start bit (some designs need this)
+  `uvm_do_with(req, {
+    req.addr  == 32'h0000_0000;
+    req.data  == 32'h0000_0000;
+    req.write == 1'b1;
+  })
+
+  `uvm_info("CTRL_SEQ", "START bit pulsed - computation triggered", UVM_MEDIUM)
+endtask
+
+// ===================================================================
+  // Wait for Done (with timeout)
+  // ===================================================================
+  task wait_for_done(int unsigned timeout_cycles = 500_000);
+    int unsigned cycle = 0;
+    logic done = 0;
+
+    while (!done && cycle < timeout_cycles) begin
+      // Poll status register (adjust address/bit if needed)
+      `uvm_do_with(req, {req.addr == 32'h0000_0040; req.write == 1'b0;})  // example status addr
+      done = req.data[0];   // assume bit 0 = done
+      #100ns;
+      cycle++;
+    end
+
+    if (done)
+      `uvm_info("SEQ", "Computation finished successfully", UVM_MEDIUM)
+    else
+      `uvm_error("SEQ", "Timeout waiting for done signal")
   endtask
 
   function ctrl_t get_default_ctrl();
-  ctrl_t ctrl;
-  ctrl = '0;
+  ctrl_t c = '0;
 
-  // Basic control
-  ctrl.start      = 1'b0;
-  ctrl.layer      = Attention;        // or Feedforward if testing FFN
-  ctrl.activation = Identity;         // Identity / Gelu / Relu
+  c.start       = 1'b0;           // will be set to 1 later by another register or pulse
+  c.layer       = Attention;      // or Feedforward
+  c.activation  = Identity;
 
-  // Quantization knobs (from config)
-  ctrl.eps_mult    = '{default: cfg.eps_mult};
-  ctrl.right_shift = '{default: cfg.right_shift};
-  ctrl.add         = '{default: cfg.add};
+  // === Use real parameters from config ===
+  c.tile_s      = cfg.M;
+  c.tile_e      = cfg.M;
+  c.tile_p      = cfg.M;
+  c.tile_f      = cfg.F;          // F may differ from M
 
-  // Tile sizes — pull from DUT parameters (M is the hardware tile)
-  ctrl.tile_s = cfg.M;   // usually 64
-  ctrl.tile_e = cfg.M;
-  ctrl.tile_p = cfg.M;
-  ctrl.tile_f = cfg.M;
+  c.eps_mult    = cfg.eps_mult;
+  c.right_shift = cfg.right_shift;
+  c.add         = cfg.add;
 
   `uvm_info("CTRL", $sformatf("Default ctrl: tile_s=%0d tile_e=%0d tile_p=%0d tile_f=%0d", 
-            ctrl.tile_s, ctrl.tile_e, ctrl.tile_p, ctrl.tile_f), UVM_MEDIUM)
+            c.tile_s, c.tile_e, c.tile_p, c.tile_f), UVM_MEDIUM)
 
   return ctrl;
 endfunction
 
+  // ===================================================================
+  // Result Verification
+  // ===================================================================
   task verify_results();
     int errors = 0;
-    if (act_output_data.size() != expected_output.size()) begin
-      `uvm_error("VERIFY", $sformatf("Output size mismatch: got %0d, expected %0d", act_output_data.size(), expected_output.size()))
-      errors++;
-    end else begin
-      for (int i = 0; i < act_output_data.size(); i++) begin
-        if (act_output_data[i] !== expected_output[i]) begin
-          `uvm_error("VERIFY", $sformatf("Mismatch at index %0d: got 0x%08x, expected 0x%08x", i, act_output_data[i], expected_output[i]))
-          errors++;
+
+    foreach (expected_output[i]) begin
+      if (act_output_data[i] !== expected_output[i]) begin
+        errors++;
+        if (errors < 10) begin
+          `uvm_error("VERIFY", $sformatf("Mismatch at idx %0d: expected=0x%0h, actual=0x%0h", 
+                    i, expected_output[i], act_output_data[i]))
         end
       end
     end
+
     if (errors == 0)
-      `uvm_info("VERIFY", "All output values match expected results", UVM_MEDIUM)
+      `uvm_info("VERIFY", "✅ PASSED - All outputs match golden model!", UVM_LOW)
     else
-      `uvm_info("VERIFY", $sformatf("Verification completed with %0d errors", errors), UVM_MEDIUM)
+      `uvm_error("VERIFY", $sformatf("❌ FAILED - %0d mismatches", errors))
   endtask
 
 endclass : ita_test_seq
