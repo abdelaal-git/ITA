@@ -176,14 +176,13 @@ class axi4_read_seq extends uvm_sequence#(axi4_txn);
 
 endclass : axi4_read_seq
 
-// Updated DPI import (place after other imports)
 import "DPI-C" context function void ita_reference_model(
-    input logic[31:0] input_data[],  input int input_size,
-    input logic[31:0] weight_data[], input int weight_size,
-    input logic[31:0] bias_data[],   input int bias_size,
+    input int input_data[],   input int input_size,
+    input int weight_data[],  input int weight_size,
+    input int bias_data[],    input int bias_size,
     input int S, input int P, input int E, input int F, input int H,
     input int N, input int M, input int WI, input int WO,
-    output logic[31:0] output_data[], input int output_size);
+    output int output_data[], input int output_size);
 
 
 // ===================================================================
@@ -254,6 +253,11 @@ class ita_test_seq extends uvm_sequence#(axi_lite_txn);
     int unsigned H = cfg.H;
     int unsigned WI = cfg.WI;
 
+    int input_int[];
+    int weight_int[];
+    int bias_int[];
+    int golden_int[];
+
     // ===================================================================
     // Accurate Data Size Calculation
     // ===================================================================
@@ -297,17 +301,32 @@ class ita_test_seq extends uvm_sequence#(axi_lite_txn);
     foreach (bias_data[i])
         bias_data[i]   = $signed($urandom_range(-(2**(WI-1)), 2**(WI-1)-1));
 
+    // === Cast to int for DPI (most stable with VCS) ===
+    input_int[]   = new[input_data.size()];
+    weight_int[]  = new[weight_data.size()];
+    bias_int[]    = new[bias_data.size()];
+    golden_int[]  = new[expected_output.size()];
+
+    foreach (input_data[i])   input_int[i]  = input_data[i];
+    foreach (weight_data[i])  weight_int[i]  = weight_data[i];
+    foreach (bias_data[i])    bias_int[i]    = bias_data[i];
+
+    `uvm_info("SEQ", "Calling Golden Model via DPI...", UVM_MEDIUM);
+
     // ===================================================================
     // Run Golden Model with same data
     // ===================================================================
     ita_reference_model(
-        input_data,   input_data.size(),
-        weight_data,  weight_data.size(),
-        bias_data,    bias_data.size(),
-        S, P, E, F, H,
-        cfg.N, cfg.M, cfg.WI, cfg.WO,
-        expected_output, expected_output.size()
+        input_int,   input_int.size(),
+        weight_int,  weight_int.size(),
+        bias_int,    bias_int.size(),
+        S, P, E, F, H, cfg.N, cfg.M, cfg.WI, cfg.WO,
+        golden_int,  golden_int.size()
     );
+
+    // Copy result back
+    foreach (golden_int[i])
+        expected_output[i] = golden_int[i];
 
     `uvm_info("SEQ", $sformatf("✅ Golden model executed successfully (output size = %0d)", 
               expected_output.size()), UVM_MEDIUM)
