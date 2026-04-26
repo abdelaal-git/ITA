@@ -234,7 +234,8 @@ class ita_test_seq extends uvm_sequence#(axi_lite_txn);
 
     start_ita_computation();
 
-    #2000ns;  // Adjust according to your design latency
+    // Wait for done
+    wait_for_done(500_000);
 
     backdoor_read_data_from_memory("ita_uvm_tb.i_axi_memory.mem",
                                    cfg.mem_cfg.output_base,
@@ -344,25 +345,25 @@ endtask
   endtask
 
   task start_ita_computation();
-  `uvm_info("CTRL_SEQ", "Pulsing START bit...", UVM_MEDIUM)
+    // === All declarations first ===
+    ctrl_t     start_ctrl = '0;
+    logic [1023:0] flat;
+    logic [31:0]   start_word;
 
-  // Write start = 1
-  `uvm_do_with(req, {
-    req.addr  == 32'h0000_0000;   // first control register
-    req.data  == 32'h0000_0001;   // assuming bit 0 is 'start'
-    req.write == 1'b1;
-  })
+    // === Executable code starts here ===
+    `uvm_info("CTRL", "Pulsing START bit dynamically using ctrl_t...", UVM_MEDIUM)
 
-  #100ns;
+    start_ctrl.start = 1'b1;           // Only start bit set
+    flat = start_ctrl;                 // Convert struct to flat vector
+    start_word = flat[31:0];           // Take the first 32-bit word
 
-  // Optionally clear start bit (some designs need this)
-  `uvm_do_with(req, {
-    req.addr  == 32'h0000_0000;
-    req.data  == 32'h0000_0000;
-    req.write == 1'b1;
-  })
+    `uvm_do_with(req, {
+        req.addr  == 32'h0000_0000;
+        req.data  == start_word;
+        req.write == 1'b1;
+    })
 
-  `uvm_info("CTRL_SEQ", "START bit pulsed - computation triggered", UVM_MEDIUM)
+    `uvm_info("CTRL", "START bit pulsed successfully (dynamic)", UVM_MEDIUM)
 endtask
 
 // ===================================================================
