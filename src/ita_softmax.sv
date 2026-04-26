@@ -5,7 +5,10 @@
 
 module ita_softmax
   import ita_package::*;
-(
+#(
+  parameter int unsigned WI = ita_package::WI,  // Input bit width (quantization) - from package
+  parameter int unsigned WO = ita_package::WO   // Output bit width (accumulator) - from package
+)(
   // Clock and reset
   input  logic                                clk_i,
   input  logic                                rst_ni,
@@ -41,6 +44,10 @@ module ita_softmax
   output logic [InputAddrWidth-1:0]           write_max_addr_o,
   output requant_t                            write_max_data_o
 );
+
+  // Derived constants for quantization
+  localparam int unsigned MAX_VAL = 2**(WI-1);  // 128 for WI=8
+  localparam int unsigned EXP_BASE = 2**WI;     // 256 for WI=8
 
   counter_t tile_d, tile_q1, tile_q2, tile_q3, tile_q4;
   counter_t count_d, count_q1, count_q2, count_q3, count_q4;
@@ -152,7 +159,7 @@ module ita_softmax
         if (SoftmaxShift != 0 && max_diff[SoftmaxShift-1])
           shift_sum_d = (max_diff >> SoftmaxShift) + 1;
       end else begin
-        prev_max_o = 8'h80;
+        prev_max_o = MAX_VAL;
       end
     end
 
@@ -162,7 +169,7 @@ module ita_softmax
       write_max_addr_o = count_q3;
       write_max_data_o = max_q;
       for (int i = 0; i < N; i++) begin
-        exp_sum_d += unsigned'(9'h100)>>shift_q[i];
+        exp_sum_d += unsigned'(EXP_BASE)>>shift_q[i];
       end
       if (tile_q3 != '0 || count_q3>=M) begin // If not first part of the first row
         exp_sum_d += ( unsigned'(read_acc_data_i[0]) >> shift_sum_q);
