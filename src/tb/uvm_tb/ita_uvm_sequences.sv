@@ -75,9 +75,6 @@ class ctrl_reg_write_seq extends uvm_sequence#(axi_lite_txn);
     if (!uvm_config_db#(ita_config)::get(null, get_full_name(), "cfg", cfg))
       `uvm_fatal("CTRL_SEQ", "ita_config not found")
 
-    // Populate ctrl using real parameters (M, S, P, E, H, F, ...)
-    ctrl = get_default_ctrl();
-
     // === Dynamic width handling (no hardcoded 384) ===
     ctrl_bit_width = $bits(ctrl_t);
     num_words      = (ctrl_bit_width + 31) / 32;
