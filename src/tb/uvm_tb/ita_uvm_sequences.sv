@@ -154,26 +154,25 @@ class axi4_read_seq extends uvm_sequence#(axi4_txn);
 
 endclass : axi4_read_seq
 
+// Updated DPI import (place after other imports)
 import "DPI-C" context function void ita_reference_model(
-  input int input_data[],
-  input int weight_data[],
-  input int bias_data[],
-    input int S,
-    input int P,
-    input int E,
-    input int F,
-    input int H,
-// Main ITA test sequence
+    input int input_data[],  input int input_size,
+    input int weight_data[], input int weight_size,
+    input int bias_data[],   input int bias_size,
+    input int S, input int P, input int E, input int F, input int H,
+    input int N, input int M, input int WI, input int WO,
+    output int output_data[], input int output_size);
+
+// ===================================================================
+// Main test sequence
+// ===================================================================
 class ita_test_seq extends uvm_sequence#(axi_lite_txn);
   `uvm_object_utils(ita_test_seq)
 
-  // Sequences
+  // Sub-sequences
   ctrl_reg_write_seq ctrl_seq;
   mem_base_write_seq mem_seq;
-  axi4_write_seq     mem_write_seq;
-  axi4_read_seq      mem_read_seq;
 
-  // Configuration
   ita_config cfg;
 
   // Test data
@@ -188,13 +187,11 @@ class ita_test_seq extends uvm_sequence#(axi_lite_txn);
   endfunction
 
   task body();
-    
-    `uvm_info("SEQ", "Starting test_seq...", UVM_MEDIUM)
-    // Get configuration
-    if (!uvm_config_db#(ita_config)::get(null, get_full_name(), "cfg", cfg))
-      `uvm_error("SEQ", "Configuration not found")
+    `uvm_info("SEQ", "Starting ita_test_seq", UVM_MEDIUM)
 
-    // Load test data (simplified - in real implementation, read from files)
+    if (!uvm_config_db#(ita_config)::get(null, get_full_name(), "cfg", cfg))
+      `uvm_fatal("SEQ", "Configuration not found")
+
     load_test_data();
 
     // Configure control registers
@@ -202,34 +199,83 @@ class ita_test_seq extends uvm_sequence#(axi_lite_txn);
     ctrl_seq.ctrl = get_default_ctrl();
     ctrl_seq.start(m_sequencer);
 
-    // Configure memory base addresses
+    // Memory bases
     mem_seq = mem_base_write_seq::type_id::create("mem_seq");
     mem_seq.mem_cfg = cfg.mem_cfg;
     mem_seq.start(m_sequencer);
 
-
-    // Write input data to memory (backdoor)
-    backdoor_write_data_to_memory("ita_uvm_tb.i_axi_memory.mem", cfg.mem_cfg.input_base, input_data);
-
-    // Write weight data to memory (backdoor)
+    // Backdoor writes
+    backdoor_write_data_to_memory("ita_uvm_tb.i_axi_memory.mem", cfg.mem_cfg.input_base,  input_data);
     backdoor_write_data_to_memory("ita_uvm_tb.i_axi_memory.mem", cfg.mem_cfg.weight_base, weight_data);
+    backdoor_write_data_to_memory("ita_uvm_tb.i_axi_memory.mem", cfg.mem_cfg.bias_base,   bias_data);
 
-    // Write bias data to memory (backdoor)
-    backdoor_write_data_to_memory("ita_uvm_tb.i_axi_memory.mem", cfg.mem_cfg.bias_base, bias_data);
-
-    // Start ITA computation
     start_ita_computation();
 
-    // Wait for completion (simplified)
-    #1000ns;
+    #2000ns;  // Adjust according to your design latency
 
-    // Read output data from memory (backdoor)
-    backdoor_read_data_from_memory("ita_uvm_tb.i_axi_memory.mem", cfg.mem_cfg.output_base, expected_output.size(), act_output_data);
+    backdoor_read_data_from_memory("ita_uvm_tb.i_axi_memory.mem",
+                                   cfg.mem_cfg.output_base,
+                                   expected_output.size(), act_output_data);
 
-    // Verify results
     verify_results();
-    `uvm_info("SEQ", "Ending test_seq...", UVM_MEDIUM)
+
+    `uvm_info("SEQ", "ita_test_seq finished", UVM_MEDIUM)
   endtask
+
+  // ===================================================================
+  // Full load_test_data()
+  // ===================================================================
+  task load_test_data();
+  int unsigned S = cfg.S;  // from ita_package via config
+  int unsigned P = cfg.P;
+  int unsigned E = cfg.E;
+  int unsigned F = cfg.F;
+  int unsigned H = cfg.H;
+  int unsigned N = cfg.N;
+  int unsigned M = cfg.M;
+  int unsigned WI = cfg.WI;
+
+  // -------------------------------------------------
+  // Array allocation — realistic sizes
+  // -------------------------------------------------
+  input_data      = new[S * E];                    // Input tokens (S x E)
+  expected_output = new[S * E];                    // Final output after MHA + FFN
+
+  // Weights: Wq(HxExP) + Wk(HxExP) + Wv(HxExP) + Wo(HxPxE) + Wff(1xExF) + Wff2(1xFxE)
+  weight_data = new[ H*E*P*2 + H*P*E + E*F + F*E ];   // rough total (adjust if needed)
+
+  // Biases: Bq(HxP) + Bk(HxP) + Bv(HxP) + Bo(HxE) + Bff(1xF) + Bff2(1xE)
+  bias_data   = new[ H*P*3 + H*E + F + E ];
+
+  `uvm_info("SEQ", $sformatf("load_test_data: S=%0d E=%0d P=%0d F=%0d H=%0d M=%0d", 
+            S, E, P, F, H, M), UVM_MEDIUM)
+
+  // -------------------------------------------------
+  // Generate random data (signed WI bits)
+  // -------------------------------------------------
+  foreach (input_data[i])  
+      input_data[i] = $signed($urandom_range(-(2**(WI-1)), 2**(WI-1)-1));
+
+  foreach (weight_data[i]) 
+      weight_data[i] = $signed($urandom_range(-(2**(WI-1)), 2**(WI-1)-1));
+
+  foreach (bias_data[i])   
+      bias_data[i]   = $signed($urandom_range(-(2**(WI-1)), 2**(WI-1)-1));
+
+  // -------------------------------------------------
+  // Call Golden Model (updated DPI signature)
+  // -------------------------------------------------
+  ita_reference_model(
+      input_data,   input_data.size(),
+      weight_data,  weight_data.size(),
+      bias_data,    bias_data.size(),
+      S, P, E, F, H, N, M, WI, cfg.WO,
+      expected_output, expected_output.size()
+  );
+
+  `uvm_info("SEQ", $sformatf("Golden model run — expected output size = %0d", 
+            expected_output.size()), UVM_MEDIUM)
+endtask
 
   // Backdoor memory initialization using uvm_hdl_deposit
   task backdoor_write_data_to_memory(string mem_path, bit [31:0] base_addr, logic [31:0] data[]);
@@ -281,39 +327,31 @@ class ita_test_seq extends uvm_sequence#(axi_lite_txn);
     `uvm_do_with(req, {req.addr == 32'h00; req.data == 32'h00000001; req.write == 1'b1;})
   endtask
 
-  task load_test_data();
-    // Example sizes (should match Python reference model)
-    int S = 10;
-    int P = 20;
-    int E = 10;
-    int F = 8;
-    int H = 1;
-    input_data = new[S*E];
-    weight_data = new[E*P];
-    bias_data = new[P];
-    expected_output = new[S*P];
-
-    foreach (input_data[i]) input_data[i] = $urandom_range(-128,127);
-    foreach (weight_data[i]) weight_data[i] = $urandom_range(-128,127);
-    foreach (bias_data[i]) bias_data[i] = $urandom_range(-128,127);
-
-    // Call DPI-C reference model to get expected output
-    ita_reference_model(input_data, weight_data, bias_data, input_data.size(), weight_data.size(), bias_data.size(), expected_output, expected_output.size());
-  endtask
-
   function ctrl_t get_default_ctrl();
-    ctrl_t ctrl;
-    ctrl = '0;
-    ctrl.start = 1'b0;
-    ctrl.eps_mult = 1;
-    ctrl.right_shift = 8;
-    ctrl.add = 0;
-    ctrl.tile_e = 16; // Simplified values
-    ctrl.tile_p = 16;
-    ctrl.tile_s = 16;
-    ctrl.tile_f = 16;
-    return ctrl;
-  endfunction
+  ctrl_t ctrl;
+  ctrl = '0;
+
+  // Basic control
+  ctrl.start      = 1'b0;
+  ctrl.layer      = Attention;        // or Feedforward if testing FFN
+  ctrl.activation = Identity;         // Identity / Gelu / Relu
+
+  // Quantization knobs (from config)
+  ctrl.eps_mult    = '{default: cfg.eps_mult};
+  ctrl.right_shift = '{default: cfg.right_shift};
+  ctrl.add         = '{default: cfg.add};
+
+  // Tile sizes — pull from DUT parameters (M is the hardware tile)
+  ctrl.tile_s = cfg.M;   // usually 64
+  ctrl.tile_e = cfg.M;
+  ctrl.tile_p = cfg.M;
+  ctrl.tile_f = cfg.M;
+
+  `uvm_info("CTRL", $sformatf("Default ctrl: tile_s=%0d tile_e=%0d tile_p=%0d tile_f=%0d", 
+            ctrl.tile_s, ctrl.tile_e, ctrl.tile_p, ctrl.tile_f), UVM_MEDIUM)
+
+  return ctrl;
+endfunction
 
   task verify_results();
     int errors = 0;
