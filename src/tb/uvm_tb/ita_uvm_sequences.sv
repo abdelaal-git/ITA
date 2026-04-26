@@ -55,7 +55,7 @@ class axi_lite_read_seq extends uvm_sequence#(axi_lite_txn);
 endclass : axi_lite_read_seq
 
 // ========================================================
-// Control Register Write Sequence (Improved)
+// Control Register Write Sequence - Fully Dynamic
 // ========================================================
 class ctrl_reg_write_seq extends uvm_sequence#(axi_lite_txn);
   `uvm_object_utils(ctrl_reg_write_seq)
@@ -71,26 +71,34 @@ class ctrl_reg_write_seq extends uvm_sequence#(axi_lite_txn);
     if (!uvm_config_db#(ita_config)::get(null, get_full_name(), "cfg", cfg))
       `uvm_fatal("CTRL_SEQ", "ita_config not found")
 
-    ctrl = get_default_ctrl();        // uses cfg.M, cfg.S, cfg.P etc.
+    // Populate ctrl using real parameters (M, S, P, E, H, F, ...)
+    ctrl = get_default_ctrl();
 
-    logic [$bits(ctrl_t)-1:0] flat = ctrl;
-    int unsigned num_words = ($bits(ctrl_t) + 31) / 32;
+    // === Dynamic width handling (no hardcoded 384) ===
+    int unsigned ctrl_bit_width = $bits(ctrl_t);
+    int unsigned num_words      = (ctrl_bit_width + 31) / 32;
 
-    `uvm_info("CTRL_SEQ", $sformatf("Writing %0d ctrl words (S=%0d P=%0d E=%0d M=%0d)", 
-              num_words, cfg.S, cfg.P, cfg.E, cfg.M), UVM_MEDIUM)
+    // Use a wide enough vector (works in all simulators)
+    logic [1023:0] flat = '0;          // Safe max width (1024 bits)
+    flat[ctrl_bit_width-1:0] = ctrl;   // Truncate to actual size
+
+    `uvm_info("CTRL_SEQ", $sformatf("Writing %0d words (%0d bits) | S=%0d P=%0d E=%0d M=%0d F=%0d", 
+              num_words, ctrl_bit_width, cfg.S, cfg.P, cfg.E, cfg.M, cfg.F), UVM_MEDIUM)
 
     for (int i = 0; i < num_words; i++) begin
       `uvm_do_with(req, {
-        req.addr  == 32'h0000_0000 + i*4;
+        req.addr  == 32'h0000_0000 + i*4;   // Control base address
         req.data  == flat[31:0];
         req.write == 1'b1;
       })
+
       flat = flat >> 32;
     end
 
-    `uvm_info("CTRL_SEQ", "Control registers written", UVM_MEDIUM)
+    `uvm_info("CTRL_SEQ", "Control registers written successfully", UVM_MEDIUM)
   endtask
-endclass
+
+endclass : ctrl_reg_write_seq
 
 // Memory base address write sequence
 class mem_base_write_seq extends uvm_sequence#(axi_lite_txn);
