@@ -8,7 +8,7 @@ package ita_package;
   import cf_math_pkg::idx_width;
 
   parameter  int unsigned N       = `ifdef ITA_N `ITA_N `else 16 `endif;
-  parameter  int unsigned M       = `ifdef ITA_M `ITA_M `else 64 `endif;
+  parameter  int unsigned M       = `ifdef ITA_M `ITA_M `else 16 `endif;
   parameter  int unsigned S       = `ifdef ITA_S `ITA_S `else 64 `endif;
   parameter  int unsigned P       = `ifdef ITA_P `ITA_P `else 64 `endif;
   parameter  int unsigned E       = `ifdef ITA_E `ITA_E `else 64 `endif;

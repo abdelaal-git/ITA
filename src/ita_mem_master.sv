@@ -57,7 +57,7 @@ module ita_mem_master
   input  logic         output_valid_i,
   output logic         output_ready_o,
   input  fifo_data_t   output_data_i,
-  input  logic         fetch_next_i,     // ← NEW: pulse/high when controller needs next set
+  input  logic         fetch_next_i     // NEW: pulse/high when controller needs next set
 );
 
   localparam int unsigned INP_BITS     = M * WI;
@@ -94,6 +94,7 @@ module ita_mem_master
   logic [BIAS_BITS-1:0]   bias_flat_q, bias_flat_d;
   logic                   bias_valid_q, bias_valid_d;
   logic [OUT_BITS-1:0]    out_flat_q, out_flat_d;
+  logic all_valid_consumed;
 
   assign inp_o = inp_flat_q;
   assign inp_weight_o = weight_flat_q;
@@ -112,6 +113,7 @@ module ita_mem_master
   assign m_axi_arsize  = 3'b010;
   assign m_axi_arburst = 2'b01;
   assign m_axi_rready  = 1'b1;
+  assign all_valid_consumed = inp_valid_q && bias_valid_q && weight_valid_q && inp_ready_i && inp_bias_ready_i && inp_weight_ready_i;
 
   always_comb begin
     state_d = state_q;
@@ -175,6 +177,7 @@ module ita_mem_master
         m_axi_arvalid = 1'b1;
         m_axi_arlen = WEIGHT_WORDS - 1;
         m_axi_araddr = mem_weight_base_addr_i + weight_addr_q;
+      end
     end else begin
       case (state_q)
         WRITE_ADDR: begin
@@ -245,10 +248,11 @@ module ita_mem_master
         default: ;
       endcase
     end
-
-    if (inp_valid_q && inp_ready_i) inp_valid_d = 1'b0;
-    if (bias_valid_q && inp_bias_ready_i) bias_valid_d = 1'b0;
-    if (weight_valid_q && inp_weight_ready_i) weight_valid_d = 1'b0;
+    if (all_valid_consumed) begin
+    	inp_valid_d = 1'b0;
+	bias_valid_d = 1'b0;
+	weight_valid_d = 1'b0;
+    end
   end
 
   always_ff @(posedge clk_i or negedge rst_ni) begin

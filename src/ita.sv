@@ -190,7 +190,7 @@ module ita
     .output_valid_i          (valid_o                ),
     .output_ready_o          (output_ready_o         ),
     .output_data_i           (data_from_fifo         ),
-    .fetch_next_i ( ctrl_i.start || calc_en )   // or a cleaner "next_tile" signal
+    .fetch_next_i ( ctrl_reg.start || calc_en )   // or a cleaner "next_tile" signal
   );
 
   always_ff @(posedge clk_i, negedge rst_ni) begin

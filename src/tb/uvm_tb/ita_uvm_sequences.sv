@@ -236,7 +236,7 @@ class ita_test_seq extends uvm_sequence#(axi_lite_txn);
 
     // Wait for done
     //wait_for_done(500_000);
-    #10000ns;
+    #200us;
     backdoor_read_data_from_memory("ita_uvm_tb.i_axi_memory.mem",
                                    cfg.mem_cfg.output_base,
                                    expected_output.size(), act_output_data);
