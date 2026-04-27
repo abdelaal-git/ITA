@@ -70,7 +70,8 @@ def compute_transformer_from_files():
     print(f"[Python] Read data: input={len(input_data)}, weight={len(weight_data)}, bias={len(bias_data)}")
     
     # Reshape input to (S, E)
-    input_arr = input_data.reshape((S, E))
+    X = input_data.reshape((H, S, E)).astype(np.float32)
+    input_arr = input_data.reshape((S, E)).astype(np.float32)
     
     # Calculate weight sizes
     wq_size = H * E * P
@@ -167,36 +168,40 @@ def compute_transformer_from_files():
     
     # ===== STEP 1: Q = input @ Wq + Bq =====
     print("[Python] Step 1: Computing Q = input @ Wq + Bq")
-    Q = np.transpose(np.matmul(input_arr, Wq, dtype=np.int32), (1, 0, 2))  # (H, S, P)
-    for h in range(H):
-        Q[h] += Bq[h]
+    Q = np.matmul(X, Wq.transpose(0, 2, 1)) + Bq
     Q = np.clip(Q, -2**(WO-1), 2**(WO-1)-1)
+    print (f"[Python] Q shape: {Q.shape}")
     Q_requant = requantize_array(Q, requant_eps_mult[0], requant_right_shift[0], requant_add[0])
-    
+    print (f"[Python] Q_requant shape: {Q_requant.shape}")
     # ===== STEP 2: K = input @ Wk + Bk =====
     print("[Python] Step 2: Computing K = input @ Wk + Bk")
-    K = np.transpose(np.matmul(input_arr, Wk, dtype=np.int32), (1, 0, 2))
-    for h in range(H):
-        K[h] += Bk[h]
+    K = np.matmul(X, Wk.transpose(0, 2, 1)) + Bk
     K = np.clip(K, -2**(WO-1), 2**(WO-1)-1)
+    
+    print (f"[Python] K shape: {K.shape}")
     K_requant = requantize_array(K, requant_eps_mult[1], requant_right_shift[1], requant_add[1])
+    print (f"[Python] K_requant shape: {K_requant.shape}")
     
     # ===== STEP 3: V = input @ Wv + Bv =====
     print("[Python] Step 3: Computing V = input @ Wv + Bv")
-    V = np.transpose(np.matmul(input_arr, Wv, dtype=np.int32), (1, 0, 2))
-    for h in range(H):
-        V[h] += Bv[h]
+    V = np.matmul(X, Wv.transpose(0, 2, 1)) + Bv 
     V = np.clip(V, -2**(WO-1), 2**(WO-1)-1)
+    print (f"[Python] V shape: {V.shape}")
     V_requant = requantize_array(V, requant_eps_mult[2], requant_right_shift[2], requant_add[2])
+    print (f"[Python] V_requant shape: {V_requant.shape}")
     
     # ===== STEP 4: A = Q @ K^T =====
     print("[Python] Step 4: Computing A = Q @ K^T")
     A = np.array([np.matmul(Q_requant[h], np.transpose(K_requant[h]), dtype=np.int32) for h in range(H)])
     A = np.clip(A, -2**(WO-1), 2**(WO-1)-1)
+    print (f"[Python] A shape: {A.shape}")
     A_requant = requantize_array(A, requant_eps_mult[3], requant_right_shift[3], requant_add[3])
     
     # ===== STEP 4b: Softmax =====
     print("[Python] Step 4b: Computing Softmax")
+    if A_requant.ndim == 2:
+        A_requant = A_requant.reshape(H, S, S)
+    print (f"[Python] A_requant shape: {A_requant.shape}")
     A_real_softmax = realSoftmax(A_requant)
     A_partial_softmax = streamingPartialSoftmax(A_requant)
     
@@ -224,7 +229,7 @@ def compute_transformer_from_files():
     
     # ===== FEEDFORWARD: FF = input @ Wff + Bff =====
     print("[Python] FFN Step 1: Computing FF = input @ Wff + Bff")
-    FF = np.matmul(input_arr, Wff, dtype=np.int32)
+    FF = np.matmul(input_arr, Wff)
     FF += Bff
     FF = np.clip(FF, -2**(WO-1), 2**(WO-1)-1)
     FF_requant = requantize_array(FF, requant_eps_mult_ffn[0], requant_right_shift_ffn[0], requant_add_ffn[0])
