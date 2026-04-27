@@ -311,25 +311,69 @@ class ita_test_seq extends uvm_sequence#(axi_lite_txn);
     foreach (weight_data[i])  weight_int[i]  = weight_data[i];
     foreach (bias_data[i])    bias_int[i]    = bias_data[i];
 
-    `uvm_info("SEQ", "Calling Golden Model via DPI...", UVM_MEDIUM);
+    `uvm_info("SEQ", "Dumping inputs/config to files for Python reference...", UVM_MEDIUM);
 
-    // ===================================================================
-    // Run Golden Model with same data
-    // ===================================================================
-    ita_reference_model(
-        input_int,   input_int.size(),
-        weight_int,  weight_int.size(),
-        bias_int,    bias_int.size(),
-        S, P, E, F, H, cfg.N, cfg.M, cfg.WI, cfg.WO,
-        golden_int,  golden_int.size()
-    );
+    dump_to_files(input_int, weight_int, bias_int, 
+                  S, P, E, F, H, cfg.N, cfg.M, cfg.WI, cfg.WO,
+                  input_size, weight_size, bias_size, output_size);
 
-    // Copy result back
+    // Run Python reference model
+    int status = $system("python3 -m PyITA.run_reference_model");  // or full path
+    if (status != 0) begin
+        `uvm_error("SEQ", $sformatf("Python reference model failed with status %0d", status));
+    end
+
+    // Read golden output back
+    read_golden_output(golden_int, output_size);
+
+    // Copy to expected_output
     foreach (golden_int[i])
         expected_output[i] = golden_int[i];
 
-    `uvm_info("SEQ", $sformatf("✅ Golden model executed successfully (output size = %0d)", 
-              expected_output.size()), UVM_MEDIUM)
+    `uvm_info("SEQ", $sformatf("✅ Golden model executed via files (output size = %0d)", 
+              expected_output.size()), UVM_MEDIUM);
+endtask
+
+task dump_to_files(int input_d[], int weight_d[], int bias_d[],
+                   int S, P, E, F, H, N, M, WI, WO,
+                   int input_sz, weight_sz, bias_sz, out_sz);
+    
+    int fd;
+    
+    // Config (text - easy to debug)
+    fd = $fopen("dpi_config.txt", "w");
+    $fwrite(fd, "S=%0d\nP=%0d\nE=%0d\nF=%0d\nH=%0d\nN=%0d\nM=%0d\nWI=%0d\nWO=%0d\n", 
+            S, P, E, F, H, N, M, WI, WO);
+    $fwrite(fd, "input_size=%0d\nweight_size=%0d\nbias_size=%0d\noutput_size=%0d\n", 
+            input_sz, weight_sz, bias_sz, out_sz);
+    $fclose(fd);
+    
+    // Binary dumps (fast + exact)
+    write_int_array_to_bin("dpi_input.bin", input_d);
+    write_int_array_to_bin("dpi_weight.bin", weight_d);
+    write_int_array_to_bin("dpi_bias.bin", bias_d);
+endtask
+
+task write_int_array_to_bin(string fname, int data[]);
+    int fd = $fopen(fname, "wb");
+    foreach (data[i]) begin
+        $fwrite(fd, "%u", data[i]);  // %u for unsigned 32-bit
+    end
+    $fclose(fd);
+endtask
+
+task read_golden_output(ref int golden[], int size);
+    int fd = $fopen("golden_output.bin", "rb");
+    if (fd == 0) begin
+        `uvm_fatal("SEQ", "Failed to open golden_output.bin");
+    end
+    golden = new[size];
+    for (int i = 0; i < size; i++) begin
+        int val;
+        $fscanf(fd, "%u", val);  // or use $fread if you prefer binary stream
+        golden[i] = val;
+    end
+    $fclose(fd);
 endtask
 
   // Backdoor memory initialization using uvm_hdl_deposit
