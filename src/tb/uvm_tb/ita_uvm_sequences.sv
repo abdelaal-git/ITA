@@ -317,8 +317,7 @@ class ita_test_seq extends uvm_sequence#(axi_lite_txn);
     dump_to_files(input_int, weight_int, bias_int, 
               S, P, E, F, H, cfg.N, cfg.M, cfg.WI, cfg.WO,
               input_size, weight_size, bias_size, output_size,
-              cfg.eps_mult, cfg.right_shift, cfg.add,        // ← from your config
-              cfg.eps_mult_ffn, cfg.right_shift_ffn, cfg.add_ffn);
+              cfg.eps_mult, cfg.right_shift, cfg.add);
 
     // Run Python reference model
     status = $system("python3 /home/ecegridfs/a/ee604p07/ITA/PyITA/run_reference_model.py");  // or full path
@@ -337,17 +336,14 @@ class ita_test_seq extends uvm_sequence#(axi_lite_txn);
               expected_output.size()), UVM_MEDIUM);
 endtask
 
-task dump_to_files(int input_d[], int weight_d[], int bias_d[],
-                   int S, P, E, F, H, N, M, WI, WO,
-                   int input_sz, weight_sz, bias_sz, out_sz,
-                   // Add these from your cfg
-                   logic [7:0] eps_mult[7][H],      // or whatever your array sizes are
-                   logic [7:0] right_shift[7][H],
-                   logic [7:0] add[7][H],
-                   // FFN requant
-                   logic [7:0] eps_mult_ffn[2],
-                   logic [7:0] right_shift_ffn[2],
-                   logic [7:0] add_ffn[2]);
+task dump_to_files(
+    int input_d[], int weight_d[], int bias_d[],
+    int S, P, E, F, H, N, M, WI, WO,
+    int input_sz, weight_sz, bias_sz, out_sz,
+    int unsigned eps_mult,      // = cfg.eps_mult
+    int unsigned right_shift,   // = cfg.right_shift  
+    int add_val                 // = cfg.add
+);
 
     int fd;
     
@@ -358,20 +354,10 @@ task dump_to_files(int input_d[], int weight_d[], int bias_d[],
     $fwrite(fd, "input_size=%0d\nweight_size=%0d\nbias_size=%0d\noutput_size=%0d\n", 
             input_sz, weight_sz, bias_sz, out_sz);
 
-    // === Requantization parameters ===
-    for (int i = 0; i < 7; i++) begin
-        for (int h = 0; h < H; h++) begin
-            $fwrite(fd, "eps_mult[%0d][%0d]=%0d\n", i, h, eps_mult[i][h]);
-            $fwrite(fd, "right_shift[%0d][%0d]=%0d\n", i, h, right_shift[i][h]);
-            $fwrite(fd, "add[%0d][%0d]=%0d\n", i, h, add[i][h]);
-        end
-    end
-
-    for (int i = 0; i < 2; i++) begin
-        $fwrite(fd, "eps_mult_ffn[%0d]=%0d\n", i, eps_mult_ffn[i]);
-        $fwrite(fd, "right_shift_ffn[%0d]=%0d\n", i, right_shift_ffn[i]);
-        $fwrite(fd, "add_ffn[%0d]=%0d\n", i, add_ffn[i]);
-    end
+    // ... config writing ...
+    $fwrite(fd, "eps_mult=%0d\n",     eps_mult);
+    $fwrite(fd, "right_shift=%0d\n",  right_shift);
+    $fwrite(fd, "add=%0d\n",          add_val);
 
     $fclose(fd);
 
