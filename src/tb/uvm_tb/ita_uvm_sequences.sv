@@ -385,7 +385,7 @@ task write_array_to_txt(string fname, int data[], string comment);
     
     foreach (data[i]) begin
         if (i % 8 == 0) $fwrite(fd, "\n");           // new line every 8 values
-        $fwrite(fd, "%8h ", data[i]);                 // hex format
+        $fwrite(fd, "0x%08h ", data[i]);                 // hex format
     end
     $fwrite(fd, "\n");
     $fclose(fd);

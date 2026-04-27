@@ -32,7 +32,7 @@ def write_debug_txt(name: str, data, comment=""):
         for i, val in enumerate(arr):
             if i % 8 == 0:
                 f.write("\n")
-            f.write(f"{val:08x} ")          # hex
+            f.write(f"0x{val:08X} ")          # hex
             # f.write(f"{val:10d} ")        # uncomment for decimal
     print(f"[Python] Saved readable: golden_{name}.txt")
 
@@ -64,13 +64,18 @@ def compute_transformer_from_files():
     input_data  = np.frombuffer(open("dpi_input.bin",  "rb").read(), dtype=np.int32)
     weight_data = np.frombuffer(open("dpi_weight.bin", "rb").read(), dtype=np.int32)
     bias_data   = np.frombuffer(open("dpi_bias.bin",   "rb").read(), dtype=np.int32)
+    write_debug_bin("input", input_data)
+    write_debug_bin("weight", weight_data)
+    write_debug_bin("bias", bias_data)
 
     X = input_data.reshape((S, E)).astype(np.float32)
+    write_debug_bin("X", X)
     print(f"[Python] Input shape: {X.shape}")
 
     # ====================== Weights & Biases ======================
     idx = 0
     Wq = weight_data[idx:idx+H*E*P].reshape((H, E, P)).astype(np.float32); idx += H*E*P
+    write_debug_bin("Wq", Wq.transpose(0, 2, 1))
     Wk = weight_data[idx:idx+H*E*P].reshape((H, E, P)).astype(np.float32); idx += H*E*P
     Wv = weight_data[idx:idx+H*E*P].reshape((H, E, P)).astype(np.float32); idx += H*E*P
     Wo = weight_data[idx:idx+H*P*E].reshape((H, P, E)).astype(np.float32); idx += H*P*E
@@ -79,6 +84,7 @@ def compute_transformer_from_files():
 
     idx = 0
     Bq = bias_data[idx:idx+H*P].reshape((H, P)).astype(np.float32); idx += H*P
+    write_debug_bin("Bq", Bq)
     Bk = bias_data[idx:idx+H*P].reshape((H, P)).astype(np.float32); idx += H*P
     Bv = bias_data[idx:idx+H*P].reshape((H, P)).astype(np.float32); idx += H*P
     Bo = bias_data[idx:idx+H*E].reshape((H, E)).astype(np.float32); idx += H*E
@@ -87,7 +93,7 @@ def compute_transformer_from_files():
 
     # ====================== Forward Pass ======================
     print("[Python] Step 1-3: Computing Q, K, V...")
-    Q = np.matmul(X, Wq.transpose(0, 2, 1)) + Bq
+    Q = np.matmul(X.astype(np.float32), Wq.transpose(0, 2, 1).astype(np.float32)) + Bq
     K = np.matmul(X, Wk.transpose(0, 2, 1)) + Bk
     V = np.matmul(X, Wv.transpose(0, 2, 1)) + Bv
 
