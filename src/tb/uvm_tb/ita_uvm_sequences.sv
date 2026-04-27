@@ -365,6 +365,10 @@ task dump_to_files(
     write_int_array_to_bin("dpi_input.bin",  input_d);
     write_int_array_to_bin("dpi_weight.bin", weight_d);
     write_int_array_to_bin("dpi_bias.bin",   bias_d);
+    // Data dumps as readable text
+    write_array_to_txt("input.txt",  input_d,  "Input");
+    write_array_to_txt("weight.txt", weight_d, "Weight");
+    write_array_to_txt("bias.txt",   bias_d,   "Bias");
 endtask
 
 task write_int_array_to_bin(string fname, int data[]);
@@ -373,6 +377,20 @@ task write_int_array_to_bin(string fname, int data[]);
         $fwrite(fd, "%u", data[i]);  // %u for unsigned 32-bit
     end
     $fclose(fd);
+endtask
+
+task write_array_to_txt(string fname, int data[], string comment);
+    int fd = $fopen(fname, "w");
+    $fwrite(fd, "// %s data - %0d elements\n", comment, data.size());
+    
+    foreach (data[i]) begin
+        if (i % 8 == 0) $fwrite(fd, "\n");           // new line every 8 values
+        $fwrite(fd, "%8h ", data[i]);                 // hex format
+    end
+    $fwrite(fd, "\n");
+    $fclose(fd);
+    
+    `uvm_info("SEQ", $sformatf("Wrote %s (%0d elements)", fname, data.size()), UVM_MEDIUM);
 endtask
 
 task read_golden_output(int size, ref int golden[]);

@@ -15,6 +15,7 @@ def write_debug_bin(name: str, data):
     with open(f"golden_{name}.bin", "wb") as f:
         f.write(arr.tobytes())
     print(f"[Python] Saved debug: golden_{name}.bin  shape={data.shape if hasattr(data,'shape') else len(arr)}")
+    write_debug_txt(name, data)
 
 
 def requantize_scalar(x, eps_mult=1, right_shift=8, add=0):
@@ -22,6 +23,18 @@ def requantize_scalar(x, eps_mult=1, right_shift=8, add=0):
     x = (x * eps_mult) >> right_shift
     x = x + add
     return np.clip(x, -128, 127).astype(np.int8)
+
+def write_debug_txt(name: str, data, comment=""):
+    """Write human-readable text file"""
+    arr = np.asarray(data).astype(np.int32).flatten()
+    with open(f"golden_{name}.txt", "w") as f:
+        f.write(f"// {comment} - shape={data.shape if hasattr(data,'shape') else arr.shape} - {len(arr)} elements\n")
+        for i, val in enumerate(arr):
+            if i % 8 == 0:
+                f.write("\n")
+            f.write(f"{val:08x} ")          # hex
+            # f.write(f"{val:10d} ")        # uncomment for decimal
+    print(f"[Python] Saved readable: golden_{name}.txt")
 
 
 def compute_transformer_from_files():
