@@ -5,6 +5,7 @@ import struct
 
 # Add paths for safety
 sys.path.insert(0, os.path.dirname(__file__))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from softmax import fastSoftmax, realSoftmax, streamingPartialSoftmax
 from gelu import gelu_requantize, i_gelu_requantized, get_i_gelu_constants, get_i_gelu_requantized_constants
@@ -333,24 +334,3 @@ if __name__ == "__main__":
         
         result = run_reference_model(test_input, test_weight, test_bias, S=8, P=8, E=8, F=8, H=1)
         print(f"Standalone test returned {len(result)} values")
-
-
-def run_reference_model(input_data, weight_data, bias_data,
-                        S=64, P=64, E=64, F=64, H=1,
-                        N=16, M=64, WI=8, WO=26):
-    """Entry point for DPI call - generates golden output."""
-    return generate_golden_binary(
-        input_data, weight_data, bias_data,
-        S, P, E, F, H, N, M, WI, WO
-    )
-
-
-# Allow standalone execution for testing
-if __name__ == "__main__":
-    # Test with simple data
-    test_input = [i for i in range(64)]
-    test_weight = [i for i in range(64)]
-    test_bias = [0] * 64
-    
-    result = run_reference_model(test_input, test_weight, test_bias, S=8, P=8, E=8, F=8, H=1)
-    print(f"Standalone test returned {len(result)} values")

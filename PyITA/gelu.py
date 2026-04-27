@@ -4,7 +4,7 @@
 
 import numpy as np
 
-from .util import (round_to_i8, round_to_u8, round_to_i16)
+from util import (round_to_i8, round_to_u8, round_to_i16)
 from typing import Tuple
 from numpy import int8 as i8, int16 as i16, int32 as i32, float32 as f32, uint8 as u8, uint16 as u16
 

@@ -257,6 +257,7 @@ class ita_test_seq extends uvm_sequence#(axi_lite_txn);
     int weight_int[];
     int bias_int[];
     int golden_int[];
+    int status;
 
     // ===================================================================
     // Accurate Data Size Calculation
@@ -318,13 +319,13 @@ class ita_test_seq extends uvm_sequence#(axi_lite_txn);
                   input_size, weight_size, bias_size, output_size);
 
     // Run Python reference model
-    int status = $system("python3 -m PyITA.run_reference_model");  // or full path
+    status = $system("python3 -m PyITA.run_reference_model");  // or full path
     if (status != 0) begin
         `uvm_error("SEQ", $sformatf("Python reference model failed with status %0d", status));
     end
 
     // Read golden output back
-    read_golden_output(golden_int, output_size);
+    read_golden_output(output_size, golden_int);
 
     // Copy to expected_output
     foreach (golden_int[i])
@@ -362,7 +363,7 @@ task write_int_array_to_bin(string fname, int data[]);
     $fclose(fd);
 endtask
 
-task read_golden_output(ref int golden[], int size);
+task read_golden_output(int size, ref int golden[]);
     int fd = $fopen("golden_output.bin", "rb");
     if (fd == 0) begin
         `uvm_fatal("SEQ", "Failed to open golden_output.bin");

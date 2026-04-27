@@ -35,23 +35,9 @@ buildpath ?= build
 VCS_DEFINES ?=
 
 # ============================
-# Build DPI Shared Library (NEW TARGET)
-# ============================
-dpi:
-	@echo "=== Building ITA DPI shared library ==="
-	cd $(DPI_DIR) && \
-	gcc -shared -fPIC -o ita_dpi.so ita_dpi.c \
-		-I/usr/include/python3.6m \
-		-I/usr/lib64/python3.6/site-packages/numpy/core/include \
-		-DNPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION \
-		-I$(VCS_HOME)/include \
-		-lpython3.6m
-	@echo "DPI library built: $(DPI_SO)"
-
-# ============================
 # Compile with VCS
 # ============================
-compile: dpi
+compile:
 	cd $(buildpath) && g++ -w -fPIC -I $(VCS_HOME)/include -I $(UVM_HOME)/src -DVCS \
 		-c $(UVM_HOME)/src/dpi/uvm_dpi.cc -o uvm_dpi.o
 
@@ -84,5 +70,4 @@ clean:
 	rm -rf $(buildpath)/AN.DB
 	rm -rf $(buildpath)/csrc
 	rm -rf $(buildpath)/*.log
-	rm -rf $(DPI_DIR)/ita_dpi.so     # ← also clean DPI lib
 	rm -rf $(buildpath)/vc_hdrs.h

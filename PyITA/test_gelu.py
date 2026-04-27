@@ -12,9 +12,9 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from .util import *
-from .gelu import *
-from .ITA import *
+from util import *
+from gelu import *
+from ITA import *
 
 N_SAMPLES = 75
 
