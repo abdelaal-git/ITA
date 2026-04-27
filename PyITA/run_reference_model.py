@@ -9,8 +9,15 @@ from gelu import i_gelu_requantized, get_i_gelu_requantized_constants
 from util import get_almost_symmetric_scaling_factor
 
 
+def write_debug_bin(name: str, data):
+    """Write array to debug file"""
+    arr = np.asarray(data).astype(np.int32).flatten()
+    with open(f"golden_{name}.bin", "wb") as f:
+        f.write(arr.tobytes())
+    print(f"[Python] Saved debug: golden_{name}.bin  shape={data.shape if hasattr(data,'shape') else len(arr)}")
+
+
 def requantize_scalar(x, eps_mult=1, right_shift=8, add=0):
-    """Requantization matching original ITA model"""
     x = x.astype(np.int32)
     x = (x * eps_mult) >> right_shift
     x = x + add
@@ -18,6 +25,8 @@ def requantize_scalar(x, eps_mult=1, right_shift=8, add=0):
 
 
 def compute_transformer_from_files():
+    print("[Python] === Starting Transformer Reference Model (Debug Mode) ===")
+
     # ====================== Config ======================
     config = {}
     with open("dpi_config.txt", "r") as f:
@@ -36,8 +45,7 @@ def compute_transformer_from_files():
     right_shift = config.get("right_shift", 8)
     add_val     = config.get("add", 0)
 
-    print(f"[Python] Reading config: S={S}, E={E}, F={F}, H={H}")
-    print(f"[Python] Requant: mult={eps_mult}, shift={right_shift}, add={add_val}")
+    print(f"[Python] Config: S={S} E={E} F={F} H={H} | Requant: mult={eps_mult}, shift={right_shift}, add={add_val}")
 
     # ====================== Load Data ======================
     input_data  = np.frombuffer(open("dpi_input.bin",  "rb").read(), dtype=np.int32)
@@ -45,6 +53,7 @@ def compute_transformer_from_files():
     bias_data   = np.frombuffer(open("dpi_bias.bin",   "rb").read(), dtype=np.int32)
 
     X = input_data.reshape((S, E)).astype(np.float32)
+    print(f"[Python] Input shape: {X.shape}")
 
     # ====================== Weights & Biases ======================
     idx = 0
@@ -64,66 +73,89 @@ def compute_transformer_from_files():
     Bff2 = bias_data[idx:idx+E].astype(np.float32)
 
     # ====================== Forward Pass ======================
-    print("[Python] Computing Q, K, V...")
+    print("[Python] Step 1-3: Computing Q, K, V...")
     Q = np.matmul(X, Wq.transpose(0, 2, 1)) + Bq
     K = np.matmul(X, Wk.transpose(0, 2, 1)) + Bk
     V = np.matmul(X, Wv.transpose(0, 2, 1)) + Bv
+
+    write_debug_bin("Q_float", Q)
+    write_debug_bin("K_float", K)
+    write_debug_bin("V_float", V)
 
     Qr = requantize_scalar(Q, eps_mult, right_shift, add_val)
     Kr = requantize_scalar(K, eps_mult, right_shift, add_val)
     Vr = requantize_scalar(V, eps_mult, right_shift, add_val)
 
-    print("[Python] Computing Attention Scores A = Q @ K^T")
+    write_debug_bin("Q", Qr)
+    write_debug_bin("K", Kr)
+    write_debug_bin("V", Vr)
+
+    print("[Python] Step 4: Computing A = Q @ K^T")
     A = np.zeros((H, S, S), dtype=np.int32)
     for h in range(H):
         A[h] = np.matmul(Qr[h], Kr[h].T)
+    write_debug_bin("A", A)
+
     Ar = requantize_scalar(A, eps_mult, right_shift, add_val)
+    write_debug_bin("A_requant", Ar)
 
-    print("[Python] Softmax + Attention Output")
+    print("[Python] Step 4b: Softmax")
     A_soft = streamingPartialSoftmax(Ar)
+    write_debug_bin("A_soft", A_soft)
 
+    print("[Python] Step 5-7: Attention Output + Head Sum")
     O = np.zeros((H, S, E), dtype=np.int32)
     for h in range(H):
         O[h] = np.matmul(A_soft[h].astype(np.int32), Vr[h])
     Or = requantize_scalar(O, eps_mult, right_shift, add_val)
+    write_debug_bin("O", Or)
 
     Out = np.zeros((H, S, E), dtype=np.int32)
     for h in range(H):
         Out[h] = np.matmul(Or[h], Wo[h]) + Bo[h]
     Outr = requantize_scalar(Out, eps_mult, right_shift, add_val)
+    write_debug_bin("Out_per_head", Outr)
 
     Out_sum = np.sum(Outr, axis=0, dtype=np.int32)
+    write_debug_bin("Out_sum", Out_sum)
 
-    # ====================== FFN + GELU (Fixed) ======================
-    print("[Python] Computing FFN...")
+    # ====================== FFN ======================
+    print("[Python] FFN Step 1: FF = X @ Wff + Bff")
     FF = np.matmul(X, Wff) + Bff
     FF_r = requantize_scalar(FF, eps_mult, right_shift, add_val)
+    write_debug_bin("FF", FF_r)
 
-    # GELU - Fixed call
+    print("[Python] FFN Step 2: GELU")
     CLIP_LO = -4.0
     gelu_eps_mult, _ = get_almost_symmetric_scaling_factor(CLIP_LO, n_bits=8)
     q_1, q_b, q_c, _, _, _, gelu_mul, gelu_shift, gelu_add, _ = \
         get_i_gelu_requantized_constants(gelu_eps_mult, 2**20)
 
     FF_gelu = np.vectorize(i_gelu_requantized)(FF_r, q_1, q_b, q_c, gelu_mul, gelu_shift, gelu_add)
+    write_debug_bin("FF_gelu", FF_gelu)
 
+    print("[Python] FFN Step 3: FF2 = FF_gelu @ Wff2 + Bff2")
     FF2 = np.matmul(FF_gelu, Wff2) + Bff2
     FF2_r = requantize_scalar(FF2, eps_mult, right_shift, add_val)
+    write_debug_bin("FF2", FF2_r)
 
-    # Final output
+    # ====================== Final Output ======================
+    print("[Python] Final: Out_sum + FF2")
     final_out = Out_sum + FF2_r
     final_out = np.clip(final_out, -2**25, 2**25 - 1).astype(np.int32)
+    write_debug_bin("final", final_out)
 
-    # Write golden
+    # Main golden output for UVM comparison
     with open("golden_output.bin", "wb") as f:
         f.write(final_out.flatten().tobytes())
 
-    print(f"[Python] SUCCESS: Wrote {final_out.size} values to golden_output.bin")
+    print(f"[Python] ✅ SUCCESS: Wrote main golden_output.bin ({final_out.size} values)")
+    print("[Python] Debug files written for all intermediate layers.")
 
 
 if __name__ == "__main__":
     if os.path.exists("dpi_config.txt"):
-        print("[Python] Running in file-based mode")
+        print("[Python] Running in file-based debug mode")
         compute_transformer_from_files()
     else:
-        print("[Python] No config file found.")
+        print("[Python] No dpi_config.txt found.")

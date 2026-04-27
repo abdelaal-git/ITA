@@ -466,7 +466,7 @@ endtask
   function ctrl_t get_default_ctrl();
   ctrl_t c = '0;
 
-  c.start       = 1'b1;           // will be set to 1 later by another register or pulse
+  c.start       = 1'b1;
   c.layer       = Attention;      // or Feedforward
   c.activation  = Identity;
 
