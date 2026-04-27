@@ -319,7 +319,7 @@ class ita_test_seq extends uvm_sequence#(axi_lite_txn);
                   input_size, weight_size, bias_size, output_size);
 
     // Run Python reference model
-    status = $system("python3 -m PyITA.run_reference_model");  // or full path
+    status = $system("python3 /home/ecegridfs/a/ee604p07/ITA/PyITA/run_reference_model.py");  // or full path
     if (status != 0) begin
         `uvm_error("SEQ", $sformatf("Python reference model failed with status %0d", status));
     end
