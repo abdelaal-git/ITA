@@ -10,7 +10,7 @@ from util import get_almost_symmetric_scaling_factor
 
 
 def requantize_scalar(x, eps_mult=1, right_shift=8, add=0):
-    """Requantization matching original ITA DPI model"""
+    """Requantization matching original ITA model"""
     x = x.astype(np.int32)
     x = (x * eps_mult) >> right_shift
     x = x + add
@@ -30,7 +30,7 @@ def compute_transformer_from_files():
     E = config.get("E", 64)
     F = config.get("F", 64)
     H = config.get("H", 1)
-    P = config.get("P", E)   # usually P == E
+    P = config.get("P", E)
 
     eps_mult    = config.get("eps_mult", 1)
     right_shift = config.get("right_shift", 8)
@@ -44,7 +44,6 @@ def compute_transformer_from_files():
     weight_data = np.frombuffer(open("dpi_weight.bin", "rb").read(), dtype=np.int32)
     bias_data   = np.frombuffer(open("dpi_bias.bin",   "rb").read(), dtype=np.int32)
 
-    # Shape fix: (S, E)
     X = input_data.reshape((S, E)).astype(np.float32)
 
     # ====================== Weights & Biases ======================
@@ -64,7 +63,7 @@ def compute_transformer_from_files():
     Bff  = bias_data[idx:idx+F].astype(np.float32); idx += F
     Bff2 = bias_data[idx:idx+E].astype(np.float32)
 
-    # ====================== Forward Pass (with shape fixes) ======================
+    # ====================== Forward Pass ======================
     print("[Python] Computing Q, K, V...")
     Q = np.matmul(X, Wq.transpose(0, 2, 1)) + Bq
     K = np.matmul(X, Wk.transpose(0, 2, 1)) + Bk
@@ -93,28 +92,29 @@ def compute_transformer_from_files():
         Out[h] = np.matmul(Or[h], Wo[h]) + Bo[h]
     Outr = requantize_scalar(Out, eps_mult, right_shift, add_val)
 
-    Out_sum = np.sum(Outr, axis=0, dtype=np.int32)   # Sum over heads
+    Out_sum = np.sum(Outr, axis=0, dtype=np.int32)
 
-    # ====================== FFN ======================
+    # ====================== FFN + GELU (Fixed) ======================
     print("[Python] Computing FFN...")
     FF = np.matmul(X, Wff) + Bff
     FF_r = requantize_scalar(FF, eps_mult, right_shift, add_val)
 
-    # GELU
-    CLIP_LO = -4
-    gelu_params = get_i_gelu_requantized_constants(
-        *get_almost_symmetric_scaling_factor(CLIP_LO, n_bits=8), D=2**20
-    )
-    FF_gelu = np.vectorize(i_gelu_requantized)(FF_r, *gelu_params[:6])   # adjust slice if needed
+    # GELU - Fixed call
+    CLIP_LO = -4.0
+    gelu_eps_mult, _ = get_almost_symmetric_scaling_factor(CLIP_LO, n_bits=8)
+    q_1, q_b, q_c, _, _, _, gelu_mul, gelu_shift, gelu_add, _ = \
+        get_i_gelu_requantized_constants(gelu_eps_mult, 2**20)
+
+    FF_gelu = np.vectorize(i_gelu_requantized)(FF_r, q_1, q_b, q_c, gelu_mul, gelu_shift, gelu_add)
 
     FF2 = np.matmul(FF_gelu, Wff2) + Bff2
     FF2_r = requantize_scalar(FF2, eps_mult, right_shift, add_val)
 
-    # Final
+    # Final output
     final_out = Out_sum + FF2_r
     final_out = np.clip(final_out, -2**25, 2**25 - 1).astype(np.int32)
 
-    # ====================== Write Golden Output ======================
+    # Write golden
     with open("golden_output.bin", "wb") as f:
         f.write(final_out.flatten().tobytes())
 
@@ -126,4 +126,4 @@ if __name__ == "__main__":
         print("[Python] Running in file-based mode")
         compute_transformer_from_files()
     else:
-        print("[Python] dpi_config.txt not found - running in standalone mode")
+        print("[Python] No config file found.")
