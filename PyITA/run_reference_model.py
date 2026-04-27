@@ -36,8 +36,8 @@ def compute_transformer_from_files():
         for line in f:
             line = line.strip()
             if "=" in line:
-                key, val = line.split("=")
-                config[key] = int(val)
+                key, val = line.split("=", 1)
+                config[key.strip()] = int(val.strip())
     
     S = config["S"]
     P = config["P"]
@@ -120,44 +120,42 @@ def compute_transformer_from_files():
     print(f"[Python] Weights parsed: Wq={Wq.shape}, Wk={Wk.shape}, Wv={Wv.shape}")
     print(f"[Python] Weights parsed: Wo={Wo.shape}, Wff={Wff.shape}, Wff2={Wff2.shape}")
     
-    # Initialize requantization parameters
+    # =============================================================
+    # Read Requantization Parameters from config (from SV)
+    # =============================================================
     requant_eps_mult = np.zeros((7, H), dtype=np.uint8)
     requant_right_shift = np.zeros((7, H), dtype=np.uint8)
     requant_add = np.zeros((7, H), dtype=np.int8)
-    
-    for i in range(7):
-        requant_eps_mult[i, :] = np.random.randint(64, 127, size=(1, H), dtype=np.uint8)
-        
-        if i < 3:  # Q, K, V
-            max_bit_width = np.log2(requant_eps_mult[i, :].astype(np.uint32) * E * 2**9).astype(np.uint32)
-        elif i == 3:  # QK
-            max_bit_width = np.log2(requant_eps_mult[i, :].astype(np.uint32) * P * 2**8).astype(np.uint32)
-        elif i == 4:  # AV
-            max_bit_width = np.log2(requant_eps_mult[i, :].astype(np.uint32) * S * 2**5).astype(np.uint32)
-        elif i == 5:  # OW
-            max_bit_width = np.log2(requant_eps_mult[i, :].astype(np.uint32) * E * 2**9).astype(np.uint32)
-        elif i == 6:  # Sum OW
-            max_bit_width = np.log2(requant_eps_mult[i, :].astype(np.uint32) * E * 2**7).astype(np.uint32)
-        
-        if i == 6:
-            requant_right_shift[i, :] = np.tile(max_bit_width[0] - 8 + 2, H)
-        else:
-            requant_right_shift[i, :] = max_bit_width - 8 + 2
-    
-    # FFN requantization parameters
+
     requant_eps_mult_ffn = np.zeros((2, 1), dtype=np.uint8)
     requant_right_shift_ffn = np.zeros((2, 1), dtype=np.uint8)
     requant_add_ffn = np.zeros((2, 1), dtype=np.int8)
-    
-    for i in range(2):
-        requant_eps_mult_ffn[i, :] = np.random.randint(64, 127, size=(1, 1), dtype=np.uint8)
-        
-        if i == 0:
-            max_bit_width = np.log2(requant_eps_mult_ffn[i, :].astype(np.uint32) * E * 2**9).astype(np.uint32)
-        elif i == 1:
-            max_bit_width = np.log2(requant_eps_mult_ffn[i, :].astype(np.uint32) * F * 2**9).astype(np.uint32)
-        
-        requant_right_shift_ffn[i, :] = max_bit_width - 8 + 2
+
+    for key in config:
+        if key.startswith("eps_mult["):
+            parts = key.replace("eps_mult[", "").replace("]", "").split("[")
+            i = int(parts[0])
+            h = int(parts[1]) if len(parts) > 1 else 0
+            requant_eps_mult[i, h] = config[key]
+        elif key.startswith("right_shift["):
+            parts = key.replace("right_shift[", "").replace("]", "").split("[")
+            i = int(parts[0])
+            h = int(parts[1]) if len(parts) > 1 else 0
+            requant_right_shift[i, h] = config[key]
+        elif key.startswith("add["):
+            parts = key.replace("add[", "").replace("]", "").split("[")
+            i = int(parts[0])
+            h = int(parts[1]) if len(parts) > 1 else 0
+            requant_add[i, h] = config[key]
+        elif key.startswith("eps_mult_ffn["):
+            i = int(key.split("[")[1].split("]")[0])
+            requant_eps_mult_ffn[i, 0] = config[key]
+        elif key.startswith("right_shift_ffn["):
+            i = int(key.split("[")[1].split("]")[0])
+            requant_right_shift_ffn[i, 0] = config[key]
+        elif key.startswith("add_ffn["):
+            i = int(key.split("[")[1].split("]")[0])
+            requant_add_ffn[i, 0] = config[key]
     
     # GELU constants
     CLIP_LO = -4
