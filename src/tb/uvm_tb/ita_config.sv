@@ -30,6 +30,14 @@ class ita_config extends uvm_object;
 
   int unsigned timeout_cycles = 1_000_000;
 
+  // Timing parameters (synced from ita_tb.sv)
+  int unsigned CLK_PERIOD = 2000;  // ps
+  int unsigned APPL_DELAY  = 400;  // ps
+
+  // Test mode control
+  int unsigned SINGLE_ATTENTION = 0;  // 0=normal attention, 1=single attention mode
+  int unsigned ITERS             = 1;  // number of iterations
+
   // -------------------------------------------------------------------------
   function new(string name = "ita_config");
     string s;
@@ -47,7 +55,13 @@ class ita_config extends uvm_object;
     // F via plusarg
     if ($value$plusargs("F=%d", s)) F = s.atoi();
     else F = 64;
-    
+
+    // SINGLE_ATTENTION via plusarg
+    if ($value$plusargs("SINGLE_ATTENTION=%d", s)) SINGLE_ATTENTION = s.atoi();
+
+    // ITERS via plusarg
+    if ($value$plusargs("ITERS=%d", s)) ITERS = s.atoi();
+
     mem_cfg.calculate_addresses(S, E, P, H, F);
 
     `uvm_info("CONFIG", $sformatf("DUT params → N=%0d M=%0d S=%0d P=%0d E=%0d H=%0d F=%0d WI=%0d WO=%0d",
