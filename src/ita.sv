@@ -351,7 +351,11 @@ module ita
     .oup_o      (oup                          )
   );
 
+`ifdef PnR
+  ita_accumulator #(.LATCH_BUFFER(1)) i_accumulator (
+`else
   ita_accumulator i_accumulator (
+`endif
     .clk_i         (clk_i              ),
     .rst_ni        (rst_ni             ),
 
