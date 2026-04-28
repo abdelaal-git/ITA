@@ -203,6 +203,9 @@ module ita_softmax_lut
   logic calc_stream_soft_en_q;
   logic calc_en_d, calc_en_q1, calc_en_q2, calc_en_q3;
 
+  // Temporary variables for stream softmax
+  logic [M-1:0][WI-SoftmaxShift:0] shift_inp_scaled;
+
   // FIFO signals
   logic        fifo_full, fifo_empty, push_to_fifo, pop_from_fifo;
   logic [SoftmaxAccDataWidth-1:0]  data_to_fifo, data_from_fifo;
@@ -249,6 +252,7 @@ module ita_softmax_lut
     inp_stream_soft_o = '0;
     softmax_done_o    = 0;
     exp_val_d         = '0;
+    shift_inp_scaled = '0;
 
     //************ Accumulation ************//
     case (step_i)
@@ -401,14 +405,13 @@ module ita_softmax_lut
     end
     if (calc_stream_soft_en_q) begin
       for (int i = 0; i < M; i++) begin
-        logic [WI-SoftmaxShift:0] shift_inp_scaled;
         shift_inp_diff[i]   = read_max_data_i[1] - inp_i[i];
         // Apply same rounding as Stage 1 DA to get consistent LUT index
-        shift_inp_scaled    = unsigned'(shift_inp_diff[i]) >> SoftmaxShift;
+        shift_inp_scaled[i]    = unsigned'(shift_inp_diff[i]) >> SoftmaxShift;
         if (SoftmaxShift != 0 && shift_inp_diff[i][SoftmaxShift-1])
-          shift_inp_scaled  = (unsigned'(shift_inp_diff[i]) >> SoftmaxShift) + 1;
+          shift_inp_scaled[i]  = (unsigned'(shift_inp_diff[i]) >> SoftmaxShift) + 1;
         inp_stream_soft_o[i] = WI'(
-          (read_acc_data_i[1] * exp_lookup(WI'(shift_inp_scaled))) >> 8
+          (read_acc_data_i[1] * exp_lookup(WI'(shift_inp_scaled[i]))) >> 8
         );
       end
     end
