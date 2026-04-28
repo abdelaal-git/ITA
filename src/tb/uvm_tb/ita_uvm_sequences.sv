@@ -221,20 +221,21 @@ class ita_test_seq extends uvm_sequence#(axi_lite_txn);
     backdoor_write_data_to_memory("ita_uvm_tb.i_axi_memory.mem", cfg.mem_cfg.bias_base,   bias_data);    
     `uvm_info("SEQ", "Memory is initialized", UVM_MEDIUM)
 
+    // Configure control registers
+    ctrl_seq = ctrl_reg_write_seq::type_id::create("ctrl_seq");
+    ctrl_seq.ctrl = get_default_ctrl();
+    ctrl_seq.start(m_sequencer);
+
     // Memory bases
     mem_seq = mem_base_write_seq::type_id::create("mem_seq");
     mem_seq.mem_cfg = cfg.mem_cfg;
     mem_seq.start(m_sequencer);
 
-    // ===================================================================
-    // Multi-phase stimulus following ita_tb.sv pattern
-    // ===================================================================
-    run_stimulus();
+    //start_ita_computation();
 
-    // Wait for computation to complete
-    wait_for_done(cfg.timeout_cycles);
-
-    // Read back output
+    // Wait for done
+    //wait_for_done(500_000);
+    #200us;
     backdoor_read_data_from_memory("ita_uvm_tb.i_axi_memory.mem",
                                    cfg.mem_cfg.output_base,
                                    expected_output.size(), act_output_data);
@@ -242,204 +243,6 @@ class ita_test_seq extends uvm_sequence#(axi_lite_txn);
     verify_results();
 
     `uvm_info("SEQ", "ita_test_seq finished", UVM_MEDIUM)
-  endtask
-
-  // ===================================================================
-  // Run stimulus following ita_tb.sv pattern
-  // ===================================================================
-  task run_stimulus();
-    ctrl_t ita_ctrl;
-    int phase;
-    int unsigned N_TILES_PROJECTION_DIM;
-    int unsigned N_TILES_EMBEDDING_DIM;
-    int unsigned N_TILES_FEEDFORWARD;
-
-    // Calculate tile counts
-    N_TILES_PROJECTION_DIM = cfg.P / cfg.M;
-    N_TILES_EMBEDDING_DIM   = cfg.E / cfg.M;
-    N_TILES_FEEDFORWARD    = cfg.F / cfg.M;
-
-    `uvm_info("STIM", $sformatf("Starting stimulus: SINGLE_ATTENTION=%0d ITERS=%0d", 
-              cfg.SINGLE_ATTENTION, cfg.ITERS), UVM_MEDIUM)
-
-    // Main iteration loop
-    for (int i = 0; i < cfg.ITERS; i++) begin
-      `uvm_info("STIM", $sformatf("Iteration %0d/%0d", i+1, cfg.ITERS), UVM_MEDIUM)
-
-      // Wait for clock edge and apply delay
-      @(posedge m_sequencer.clk);
-      #cfg.APPL_DELAY;
-
-      // Set initial layer and activation
-      if (cfg.SINGLE_ATTENTION == 1) begin
-        ita_ctrl.layer = ita_package::Linear;
-      end else begin
-        ita_ctrl.layer = ita_package::Attention;
-      end
-      ita_ctrl.activation = ita_package::Identity;
-
-      // ===================================================================
-      // SINGLE_ATTENTION mode
-      // ===================================================================
-      if (cfg.SINGLE_ATTENTION == 1) begin
-        // -----------------------------------------------------------------
-        // Phase 0-2: QKV Generation
-        // -----------------------------------------------------------------
-        for (phase = 0; phase < 3; phase++) begin
-          @(posedge m_sequencer.clk);
-          #cfg.APPL_DELAY;
-
-          ita_ctrl.eps_mult[0]    = cfg.eps_mult;
-          ita_ctrl.right_shift[0] = cfg.right_shift;
-          ita_ctrl.add[0]         = cfg.add;
-
-          // Write control registers
-          write_ctrl_regs(ita_ctrl);
-
-          // Apply inputs for this phase
-          apply_phase_inputs(phase);
-
-          // Wait for computation
-          #(cfg.CLK_PERIOD * 10);
-        end
-
-        // -----------------------------------------------------------------
-        // Phase 3: Attention
-        // -----------------------------------------------------------------
-        @(posedge m_sequencer.clk);
-        #cfg.APPL_DELAY;
-
-        ita_ctrl.layer            = ita_package::SingleAttention;
-        ita_ctrl.eps_mult[3]     = cfg.eps_mult;
-        ita_ctrl.right_shift[3]   = cfg.right_shift;
-        ita_ctrl.add[3]           = cfg.add;
-        ita_ctrl.eps_mult[4]     = cfg.eps_mult;
-        ita_ctrl.right_shift[4]   = cfg.right_shift;
-        ita_ctrl.add[4]           = cfg.add;
-
-        write_ctrl_regs(ita_ctrl);
-        apply_phase_inputs(3);
-        #(cfg.CLK_PERIOD * 10);
-
-        // -----------------------------------------------------------------
-        // Phase 4: Output projection (OW Generation)
-        // -----------------------------------------------------------------
-        @(posedge m_sequencer.clk);
-        #cfg.APPL_DELAY;
-
-        ita_ctrl.layer       = ita_package::Linear;
-        ita_ctrl.eps_mult[0]    = cfg.eps_mult;
-        ita_ctrl.right_shift[0] = cfg.right_shift;
-        ita_ctrl.add[0]         = cfg.add;
-        ita_ctrl.tile_e     = N_TILES_PROJECTION_DIM;
-        ita_ctrl.tile_p     = N_TILES_EMBEDDING_DIM;
-
-        write_ctrl_regs(ita_ctrl);
-        apply_phase_inputs(4);
-        #(cfg.CLK_PERIOD * 10);
-
-        // -----------------------------------------------------------------
-        // Phase 5: FF1 (Feed-forward first layer)
-        // -----------------------------------------------------------------
-        @(posedge m_sequencer.clk);
-        #cfg.APPL_DELAY;
-
-        ita_ctrl.layer       = ita_package::Linear;
-        ita_ctrl.activation  = ita_package::Gelu;  // ACTIVATION from ita_tb
-        ita_ctrl.tile_e     = N_TILES_EMBEDDING_DIM;
-        ita_ctrl.tile_p     = N_TILES_FEEDFORWARD;
-        ita_ctrl.eps_mult[0]    = cfg.eps_mult;
-        ita_ctrl.right_shift[0] = cfg.right_shift;
-        ita_ctrl.add[0]         = cfg.add;
-
-        write_ctrl_regs(ita_ctrl);
-        apply_phase_inputs(5);
-        #(cfg.CLK_PERIOD * 10);
-
-        // -----------------------------------------------------------------
-        // Phase 6: FF2 (Feed-forward second layer)
-        // -----------------------------------------------------------------
-        @(posedge m_sequencer.clk);
-        #cfg.APPL_DELAY;
-
-        ita_ctrl.activation  = ita_package::Identity;
-        ita_ctrl.tile_e     = N_TILES_FEEDFORWARD;
-        ita_ctrl.tile_p     = N_TILES_EMBEDDING_DIM;
-        ita_ctrl.eps_mult[0]    = cfg.eps_mult;
-        ita_ctrl.right_shift[0] = cfg.right_shift;
-        ita_ctrl.add[0]         = cfg.add;
-
-        write_ctrl_regs(ita_ctrl);
-        apply_phase_inputs(6);
-      end 
-      // ===================================================================
-      // Normal attention mode
-      // ===================================================================
-      else begin
-        ita_ctrl.eps_mult    = cfg.eps_mult;
-        ita_ctrl.right_shift = cfg.right_shift;
-        ita_ctrl.add         = cfg.add;
-
-        write_ctrl_regs(ita_ctrl);
-
-        // Phases 0-4: Attention layers
-        for (phase = 0; phase < 5; phase++) begin
-          apply_phase_inputs(phase);
-        end
-
-        // Phase 5: Feedforward with activation
-        @(posedge m_sequencer.clk);
-        #cfg.APPL_DELAY;
-
-        ita_ctrl.layer      = ita_package::Feedforward;
-        ita_ctrl.activation = ita_package::Gelu;  // ACTIVATION from ita_tb
-
-        write_ctrl_regs(ita_ctrl);
-        apply_phase_inputs(5);
-
-        // Phase 6: Feedforward without activation
-        ita_ctrl.activation = ita_package::Identity;
-        apply_phase_inputs(6);
-      end
-
-      // Final wait
-      @(posedge m_sequencer.clk);
-      #cfg.APPL_DELAY;
-      `uvm_info("STIM", $sformatf("Iteration %0d complete", i+1), UVM_MEDIUM)
-    end
-
-    `uvm_info("STIM", "Stimulus complete", UVM_MEDIUM)
-  endtask
-
-  // ===================================================================
-  // Write control registers via ctrl_seq
-  // ===================================================================
-  task write_ctrl_regs(ctrl_t ctrl);
-    ctrl_seq = ctrl_reg_write_seq::type_id::create("ctrl_seq");
-    ctrl_seq.ctrl = ctrl;
-    ctrl_seq.start(m_sequencer);
-  endtask
-
-  // ===================================================================
-  // Apply inputs for a specific phase
-  // ===================================================================
-  task apply_phase_inputs(int phase);
-    // In UVM, the memory is already loaded via backdoor writes
-    // This task represents the trigger signal to start computation
-    // The actual data flow is handled by the DUT based on control registers
-    `uvm_info("PHASE", $sformatf("Applying phase %0d", phase), UVM_MEDIUM)
-    // Additional phase-specific configuration can be added here
-  endtask
-
-  // ===================================================================
-  // Wait for done signal
-  // ===================================================================
-  task wait_for_done(int unsigned timeout_cycles);
-    int cycles = 0;
-    // Note: In a real implementation, this would monitor the done signal
-    // For now, use a simple timeout
-    #((cfg.CLK_PERIOD * timeout_cycles) / 1000);  // Convert to ps
-    `uvm_info("SEQ", $sformatf("Waited %0d cycles for done", timeout_cycles), UVM_MEDIUM)
   endtask
 
   task load_test_data();
