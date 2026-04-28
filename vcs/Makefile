@@ -2,9 +2,9 @@
 # Licensed under the Apache License, Version 2.0, see LICENSE for details.
 # SPDX-License-Identifier: Apache-2.0
 
-.PHONY: all compile run wave clean dpi
+.PHONY: all compile run wave clean
 
-all: dpi compile run
+all: compile run
 
 BENDER =$(BENDER_INSTALL_DIR)
 
@@ -20,13 +20,10 @@ VERDI          := $(VERDI_HOME)/bin/verdi
 # DPI Settings (NEW)
 # ============================
 DPI_DIR        := /home/ecegridfs/a/ee604p07/ITA/PyITA
-DPI_C          := $(DPI_DIR)/ita_dpi.c
-DPI_SO         := $(DPI_DIR)/ita_dpi.so
 
 # VCS Compile Flags
 VCS_SV_FLAGS   = -sverilog -timescale=1ns/1ps -debug_access+all -full64 \
-                 -top ita_uvm_tb uvm_dpi.o -kdb \
-                 -sv_lib $(DPI_SO)          # ← Important: link your DPI library
+                 -top ita_uvm_tb uvm_dpi.o -kdb
 
 VCS_ELAB_LOG   = vcs_elab.log
 VCS_COMPILE_LOG= vcs_compile.log
